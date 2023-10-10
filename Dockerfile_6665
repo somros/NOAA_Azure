@@ -1,0 +1,15 @@
+FROM ubuntu:20.04
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apt-get update && apt-get install -yq build-essential autoconf libnetcdf-dev libxml2-dev libproj-dev subversion valgrind dos2unix gawk
+
+COPY /trunk/atlantis /app/atlantis
+COPY /trunk/.svn /app/.svn
+
+RUN cd /app/atlantis && aclocal && autoheader && autoconf && automake -a && ./configure && make CFLAGS='-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H -Wno-misleading-indentation -Wno-format -Wno-implicit-fallthrough' && make -d install
+
+WORKDIR /app/model
+
+ENTRYPOINT ["sh"]
+
+CMD ["RunAtlantis.sh"]
