@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -yq build-essential autoconf libnetcdf-dev
 
 COPY /trunk/atlantis /app/atlantis
 COPY /trunk/.svn /app/.svn
+COPY /goa_runs/AtlantisGOA_Base /app/model
 
 RUN cd /app/atlantis && aclocal && autoheader && autoconf && automake -a && ./configure && make CFLAGS='-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H -Wno-misleading-indentation -Wno-format -Wno-implicit-fallthrough' && make -d install
 
