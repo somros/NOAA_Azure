@@ -15,6 +15,7 @@
       "autoscaleFormula": "QUEUE"
     }
   },
+  "containerImage": "arovel/atlantisgoa:latest",
   "rPackages": {
     "cran": [],
     "github": []

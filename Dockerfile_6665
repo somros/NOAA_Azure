@@ -1,19 +1,33 @@
 FROM ubuntu:20.04
-ENV TZ=UTC
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-RUN apt-get update && apt-get install -yq build-essential autoconf libnetcdf-dev libxml2-dev libproj-dev subversion valgrind dos2unix gawk
+# Set up time zone and environment
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=America/Los_Angeles
+RUN ln -snf /usr/share/timezone/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# Atlantis dependencies (probably more stuff than we need here)
+RUN apt-get update && apt-get install -yq autoconf automake build-essential libcurl4 libcurl4-openssl-dev curl gdal-bin libgdal-dev libgeos++-dev libgeos-dev flip libcairo2 libcairo2-dev libapparmor1 libhdf5-dev libnetcdf-dev libxml2-dev libproj15 libproj-dev libssl-dev libv4l-0 libgeotiff5 libglu1-mesa-dev libpoppler-cpp-dev libprotobuf-dev librsvg2-dev libx11-dev lsscsi openjdk-8-jdk python2.7 python3-pip python-dev proj-bin proj-data protobuf-compiler openssl rpm mesa-common-dev netcdf-bin ntp ntpdate subversion valgrind cdo nco m4 dos2unix gawk gfortran libfribidi-dev libharfbuzz-dev libudunits2-dev libv8-dev gnupg-agent software-properties-common dirmngr --no-install-recommends
+
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# install missing dependencies and remove unused packages
+RUN apt-get -f install -y && apt autoremove -y
+
+# Copy Atlantis from Controller
 COPY /trunk/atlantis /app/atlantis
 COPY /trunk/.svn /app/.svn
-
-# Not usre we need the bit below
-COPY /goa_runs/AtlantisGOA_Base /app/model
+# Not sure we need the bit below
+# COPY /goa_runs/AtlantisGOA_Base /app/model
 
 # This builds Atlantis in the container
 RUN cd /app/atlantis && aclocal && autoheader && autoconf && automake -a && ./configure && make CFLAGS='-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H -Wno-misleading-indentation -Wno-format -Wno-implicit-fallthrough' && make -d install
 
-WORKDIR /app/model
+# Now install R and R packages
+RUN apt-key adv --keyserver hkp://pgp.mit.edu:80 --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
+RUN add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/'
+RUN apt update
+RUN apt install -y r-base
 
-ENTRYPOINT ["sh"]
+RUN R -e 'install.packages(c("dtplyr","stringi","data.table","dplyr","tidyr","stringr","R.utils","magrittr","future","parallel","doSNOW"), repos="https://cloud.r-project.org/")'
 
-CMD ["RunAtlantis.sh"]
+ENTRYPOINT ["R"]
+CMD ["--no-save"]
