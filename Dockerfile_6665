@@ -5,8 +5,11 @@ RUN apt-get update && apt-get install -yq build-essential autoconf libnetcdf-dev
 
 COPY /trunk/atlantis /app/atlantis
 COPY /trunk/.svn /app/.svn
+
+# Not usre we need the bit below
 COPY /goa_runs/AtlantisGOA_Base /app/model
 
+# This builds Atlantis in the container
 RUN cd /app/atlantis && aclocal && autoheader && autoconf && automake -a && ./configure && make CFLAGS='-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H -Wno-misleading-indentation -Wno-format -Wno-implicit-fallthrough' && make -d install
 
 WORKDIR /app/model
