@@ -15,8 +15,7 @@ RUN apt-get -f install -y && apt autoremove -y
 # Copy Atlantis from Controller
 COPY /trunk/atlantis /app/atlantis
 COPY /trunk/.svn /app/.svn
-# Not sure we need the bit below
-# COPY /goa_runs/AtlantisGOA_Base /app/model
+COPY /goa_runs/AtlantisGOA_F_test /app/model
 
 # This builds Atlantis in the container
 RUN cd /app/atlantis && aclocal && autoheader && autoconf && automake -a && ./configure && make CFLAGS='-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H -Wno-misleading-indentation -Wno-format -Wno-implicit-fallthrough' && make -d install
@@ -27,7 +26,7 @@ RUN add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu focal-c
 RUN apt update
 RUN apt install -y r-base
 
-RUN R -e 'install.packages(c("dtplyr","stringi","data.table","dplyr","tidyr","stringr","R.utils","magrittr","future","parallel","doSNOW"), repos="https://cloud.r-project.org/")'
+RUN R -e 'install.packages(c("dtplyr","stringi","data.table","dplyr","tidyr","stringr","R.utils","magrittr","future","parallel","doSNOW","here"), repos="https://cloud.r-project.org/")'
 
 ENTRYPOINT ["R"]
 CMD ["--no-save"]

@@ -1,7 +1,6 @@
 {
-  "pool": {
     "name": "AtlantisGOAPool",
-    "vmSize": "Standard_F2",
+    "vmSize": "Standard_D2_v2",
     "maxTasksPerNode": 2,
     "poolSize": {
       "dedicatedNodes": {
@@ -9,11 +8,10 @@
         "max": 2
       },
       "lowPriorityNodes": {
-        "min": 0,
-        "max": 0
+        "min": 1,
+        "max": 1
       },
       "autoscaleFormula": "QUEUE"
-    }
   },
   "containerImage": "arovel/atlantisgoa:latest",
   "rPackages": {
