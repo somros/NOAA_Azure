@@ -11,7 +11,7 @@
         "min": 0,
         "max": 0
       },
-      "autoscaleFormula": "QUEUE"
+      "autoscaleFormula": "QUEUE_AND_RUNNING"
   },
   "rPackages": {
     "cran": [],
