@@ -12,16 +12,19 @@ library(here)
 nfleet <- 33 # how many fleets in the harvest.prm file?
 select <- dplyr::select
 
-# Create a folder from the Base model that contains all the harves.prm and run.sh files
-# This folder needs to be mounted on the Docker container that is spun up at each loop iteration, from the Dockerfile
-system(paste('sudo cp -r', here('goa_runs','AtlantisGOA_Base'), here('goa_runs','AtlantisGOA_F_test')))
-system(paste('sudo chmod -R a+rwx ', here('goa_runs','AtlantisGOA_F_test'))) # add permission
-# remove harvest.prm and run.sh files as we will create new ones, also remove any output file that may have been copied
-system(paste('sudo rm -r ', 
-             here('goa_runs','AtlantisGOA_F_test','outputFolder/'),
-             here('goa_runs','AtlantisGOA_F_test','out14'),
-             here('goa_runs','AtlantisGOA_F_test','GOA_harvest_background.prm'),
-             here('goa_runs','AtlantisGOA_F_test','RunAtlantis.sh'))) 
+# Create a folder from the Base model that contains all the harvest.prm and run.sh files
+# This folder needs to be cloned on each node of the foreach loop
+if(!file.exists(here('goa_runs','AtlantisGOA_F_test'))){
+  system(paste('sudo cp -r', here('goa_runs','AtlantisGOA_Base'), here('goa_runs','AtlantisGOA_F_test')))
+  system(paste('sudo chmod -R a+rwx ', here('goa_runs','AtlantisGOA_F_test'))) # add permission
+  # remove harvest.prm and run.sh files as we will create new ones, also remove any output file that may have been copied
+  system(paste('sudo rm -r ', 
+               here('goa_runs','AtlantisGOA_F_test','outputFolder/'),
+               here('goa_runs','AtlantisGOA_F_test','out14'),
+               here('goa_runs','AtlantisGOA_F_test','GOA_harvest_background.prm'),
+               here('goa_runs','AtlantisGOA_F_test','RunAtlantis.sh')))
+  system(paste('sudo rm -rf ', here('goa_runs','AtlantisGOA_F_test','.git'))) # get rid of the git tracking from the base model folder
+}
 
 # make mFC vectors based on a range of F:
 # start from 0 and go up to 2*FOFL - test 10 values (closer together the closer to 0 we are?)
@@ -79,7 +82,7 @@ f_tab <- f_tab %>%
   mutate(Code = species_to_test) %>%
   set_names(c(1:8, 'Code'))
 
-prm_file <- here('goa_runs','AtlantisGOA_Base','GOA_harvest_background.prm')
+prm_file <- here('NOAA_Azure','data','GOA_harvest_background.prm')
 prm_vals <- readLines(prm_file)
 
 # set the path to the Atlantis folder
@@ -125,7 +128,7 @@ for(sp in species_to_test){
 }
 
 f_lookup <- bind_rows(f_lookup_ls) # save this 
-write.csv(f_lookup, here('NOAA_Azure','f_lookup.csv'),row.names = F)
+write.csv(f_lookup, here('NOAA_Azure','data','f_lookup.csv'),row.names = F)
 
 # now make the RunAtlantis.sh scripts pointing to the correct path and creating the correct output
 for (idx in f_lookup$idx) {
