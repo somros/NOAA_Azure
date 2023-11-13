@@ -1,7 +1,7 @@
 #' Code to manage and run Atlantis simulations using parallel processing and doAzure
 #'  
-#' @author Hem Nalini Morzaria Luna
-#' @date June 2017
+#' @author Alberto Rovellini
+#' @date October 2023
 #' # https://github.com/Azure/doAzureParallel
 #' 
 
@@ -17,8 +17,11 @@ Sys.setlocale("LC_CTYPE", "en_US.UTF-8")
 # devtools::install_github("omegahat/XMLSchema")
 # remotes::install_github("sckott/SSOAP") # https://rdrr.io/github/sckott/SSOAP/
 # install the Azure parallel packages
-devtools::install_github(c("Azure/rAzureBatch", "Azure/doAzureParallel"))
-
+# devtools::install_github(c("Azure/rAzureBatch", "Azure/doAzureParallel"))
+# install my version of the doAzureParallel package
+devtools::install_github("Azure/rAzureBatch")
+devtools::install_github("somros/doAzureParallel")
+                         
 # List of packages for session
 # these are the packages that the Controller needs
 .packages = c("devtools", "dtplyr","stringi","data.table","tidyverse","stringr","R.utils",
@@ -43,19 +46,8 @@ lapply(.packages, require, character.only=TRUE)
 # Upgrade files
 system("sudo apt-get update; sudo apt-get upgrade -y", wait = TRUE)
 
-# You only need to run all this if Atlantis is not on this machine
-# And when you do need it, make sure the codebase is the one you want, credentials change, etc
-# Install dependencies needed for Atlantis 
-# system("sudo apt-get install subversion build-essential subversion flip autoconf libnetcdf-dev libxml2-dev libproj-dev -y", wait = TRUE)
-# 
-# # Get current Atlantis build, if need to change version use co -5468 for example
-# system("svn co https://svnserv.csiro.au/svn/ext/atlantis/Atlantis/branches/bec_dev --username XXX --password YYY --quiet", wait = TRUE)
-# 
-# #Build Atlantis
-# system("cd bec_dev/atlantis; aclocal; autoheader; autoconf; automake -a; ./configure; make --ignore-errors; sudo make install; cd atlantismain", wait = TRUE)
-
-# create the prm and run files
-source(here('NOAA_Azure','code','create_prm_sh_files.R')) 
+# create the prm and run files if needed
+# source(here('NOAA_Azure','code','create_prm_sh_files.R')) 
 # This needs to be pushed to github
 
 # Fill out your credential config and cluster config files.
@@ -78,6 +70,7 @@ getDoParWorkers()
 # read in lookup table for the indices
 f_lookup <- read.csv(here('NOAA_Azure','data','f_lookup.csv'), header = TRUE)
 runidx <- f_lookup$idx # as many runs as you want to do, would be 96 for us
+#runidx <- 1:4 #for debugging
 
 if("package:doSNOW" %in% search()) detach("package:doSNOW", unload=TRUE) 
 if("package:future" %in% search()) detach("package:future", unload=TRUE) 
@@ -85,8 +78,13 @@ if("package:parallely" %in% search()) detach("package:parallely", unload=TRUE)
 if("package:snow" %in% search()) detach("package:snow", unload=TRUE) 
 if("package:parallel" %in% search()) detach("package:parallel", unload=TRUE) 
 
+# azure options
+opts <- list(maxTaskRetryCount = 0, # do not retry a task if it fails
+             maxDate = Sys.time() + 60 * 60 * 24 * 10, # 10 days
+             autoDeleteJob=FALSE)
+
 # Run the parallel loop
-atlantis.scenarios <- foreach(idx=runidx, .options.azure=list(autoDeleteJob=FALSE), .errorhandling = 'pass', .verbose = TRUE) %dopar% { # move to dopar to run jobs in parallel, do does it on local host
+atlantis.scenarios <- foreach(idx=runidx, .options.azure=opts, .errorhandling = 'pass', .verbose = TRUE) %dopar% { # move to dopar to run jobs in parallel, do does it on local host
   
   # # Upgrade files
   system("sudo apt-get update; sudo apt-get upgrade -y", wait = TRUE)
@@ -115,13 +113,19 @@ atlantis.scenarios <- foreach(idx=runidx, .options.azure=list(autoDeleteJob=FALS
   # The only option left if to svn checkout - this needs credentials so do not commit this to github as it gives access to the code
   # Get code from CSIRO SVN, if need to change version use co -6665 for example
   # do not commit these lines
-  svn_username <- ""
-  svn_pw <- ""
+  # svn_username <- ""
+  # svn_pw <- ""
+  # 
+  # system(paste("svn co -r6665 https://svnserv.csiro.au/svn/ext/atlantis/Atlantis/trunk --username", svn_username, "--password", svn_pw, "--quiet"), wait = TRUE) # this works it seems
 
-  system(paste("svn co -r6665 https://svnserv.csiro.au/svn/ext/atlantis/Atlantis/trunk --username", svn_username, "--password", svn_pw, "--quiet"), wait = TRUE) # this works it seems
-
+  ### v6665 comes with loads of fprints that need to be silenced or will produce tons of output
+  # Alternative is to clone a private GitHub repo instead with the code and then build from that
+  
+  pat <- ""
+  system(paste0("git clone https://",pat,"@github.com/somros/for_pw.git"))
+  
   # to compile
-  system("cd trunk/atlantis; aclocal; autoheader; autoconf; automake -a; ./configure; sudo make CFLAGS='-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H -Wno-misleading-indentation -Wno-format -Wno-implicit-fallthrough'; sudo make -d install", wait = TRUE)
+  system("cd for_pw/trunk/atlantis; aclocal; autoheader; autoconf; automake -a; ./configure; sudo make CFLAGS='-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H -Wno-misleading-indentation -Wno-format -Wno-implicit-fallthrough'; sudo make -d install", wait = TRUE)
   
   # now clone the F test folder from GitHub
   system("git clone https://github.com/somros/AtlantisGOA_F_test.git")
