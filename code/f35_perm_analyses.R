@@ -15,9 +15,9 @@ library(ncdf4)
 # Set up env and read data ------------------------------------------------
 
 # identify which data we want to work on
-batch <- "base_experiment"
+batch <- "atf_fixed"
 this_job <- "job20231103012611" # and which job to use for the single-species stuff
-runs <- 1414:1424
+runs <- 1437:1447
 maxmult <- 2
 
 # set the clock to date plots
