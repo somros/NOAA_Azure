@@ -9,14 +9,16 @@ library(tidyverse)
 library(readxl)
 library(ggh4x)
 library(viridis)
+library(tidync)
+library(ncdf4)
 
 # Set up env and read data ------------------------------------------------
 
 # identify which data we want to work on
-batch <- "maxF_4f35"
+batch <- "base_experiment"
 this_job <- "job20231103012611" # and which job to use for the single-species stuff
-runs <- 1448:1458
-maxmult <- 4
+runs <- 1414:1424
+maxmult <- 2
 
 # set the clock to date plots
 t <- format(Sys.time(),'%Y-%m-%d %H-%M-%S')
@@ -85,7 +87,7 @@ catch_df_long <- catch_df %>%
 
 # discount it by 8%
 # atlantis_oy <- atlantis_oy - 0.08*atlantis_oy # this is REALLY close to OY
-  
+
 # plot
 catch_df_long %>%
   ggplot(aes(x = mult, y = total_yield))+
@@ -95,20 +97,21 @@ catch_df_long %>%
 
 # at 1.2 F35 vector we have maximum yield
 
-global_yield_plot <- catch_df_long %>%
-  ggplot(aes(x = mult, y = mt / 1000, fill = LongName))+
+global_yield_ms <- catch_df_long %>%
+  ggplot(aes(x = mult, y = mt / 1100, fill = LongName))+
   geom_bar(stat = "identity", position = "stack")+
   scale_fill_viridis_d()+
   scale_x_continuous(breaks = seq(0,maxmult,length.out=11))+
+  scale_y_continuous(limits = c(0,1100))+
   geom_hline(yintercept = 116, color = "red", linetype = "dashed")+
   geom_hline(yintercept = 800, color = "red", linetype = "dashed")+
   #geom_hline(yintercept = atlantis_oy / 1000, color = "blue", linetype = "dashed")+
   theme_bw()+
   labs(x = "F35 multiplier", y = "Catch (1000 mt)", fill = "Stock")
-global_yield_plot
+global_yield_ms
 
-ggsave(paste0("NOAA_Azure/results/figures/", batch, "/global_yield.png"), global_yield_plot, width = 8, height = 6)
-  
+ggsave(paste0("NOAA_Azure/results/figures/", batch, "/global_yield_MS.png"), global_yield_ms, width = 8, height = 6)
+
 # proportions remain fairly constant over time. This is not a good sign, trophic interactions are really weak
 # negligible amounts of POP (which is bad in the GOA, it is a large fishery)
 # shooting past the real-world cap at f35 (never happened).
@@ -181,7 +184,7 @@ for(i in 1:nrow(f35_key)){
   f_t1 <- biom_age_t1 %>% left_join(catch_t1, by = "Code") %>%
     mutate(exp_rate = catch/biomass,
            f = -log(1-exp_rate)) %>%#,
-           #fidx = fidx) %>% # need this for joining later on
+    #fidx = fidx) %>% # need this for joining later on
     select(Code, f)#, fidx) 
   
   # # bind all
@@ -203,7 +206,7 @@ ms_yield_long <- df_mult <- ms_yield_df %>% # one of these is for later plots th
   pivot_longer(cols = -c(Code, LongName, f, mult), names_to = "type", values_to = "mt") %>%
   mutate(experiment = "ms") %>%
   select(Code, LongName, experiment, f, mult, type, mt)
-  
+
 # drop mult
 ms_yield_long <- ms_yield_long %>%
   dplyr::select(-mult)
@@ -244,9 +247,11 @@ for(i in 1:length(f_files)){
 
 f_df <- bind_rows(f_df_ls) 
 
-ss_yield_long <- f_df %>%
+ss_yield_long <- ss_yield_long_fidx <- f_df %>%
   mutate(experiment = "ss") %>%
-  select(Code, LongName, f, experiment, type, mt)
+  select(Code, LongName, f, fidx, experiment, type, mt)
+
+ss_yield_long <- ss_yield_long %>% dplyr::select(-fidx)
 
 # produce a dataset of 35% B0, to be used to plot horizontal lines that will intersect the yield curve
 # but B35% will now be different between runs with different steepness? Not between runs with smaller selex in theory
@@ -528,7 +533,7 @@ ms_unselected_df <- ms_unselected_df %>%
   left_join(grps %>% select(Code, LongName), by = "Code") %>%
   mutate(experiment = "ms") %>%
   select(Code, LongName, experiment, f, biomass_mt)
-  
+
 # create empty list to fill with data frame for the yield curve
 folder_path <- here("NOAA_Azure","results","pre-processing",this_job,"results")
 # list the results files
@@ -605,7 +610,7 @@ for(i in 1:length(results_list)){ # TODO: turn all of these into a function with
   # # bind all
   f_frame <- f_t1 %>%
     mutate(biomass = unselected_biomass)#,
-           #catch = catch_val)
+  #catch = catch_val)
   
   ss_unselected_list[[i]] <- f_frame
   
@@ -656,7 +661,7 @@ write.csv(ms_unselected_df %>% mutate(batch = batch),
 top_preds <- grps %>% filter(GroupType %in% c("MAMMAL","BIRD","SHARK")) %>% pull(Code)
 forage <- c("CAP","SAN","HER","EUL","FOS")
 other_fg <- c(top_preds, forage)
-  
+
 ms_other_list <- list()
 
 for(i in 1:nrow(f35_key)){
@@ -668,7 +673,7 @@ for(i in 1:nrow(f35_key)){
   
   # extract tables from results
   biomage <- read.table(this_biomage_file, sep = " ", header = T)
-
+  
   # now extract data
   # SSB to plot and report in tables
   other_biomass <- biomage %>% 
@@ -760,7 +765,7 @@ for(i in 1:nrow(f35_key)){
     mutate(f_mult = M / `F`,
            mult = this_mult) %>%
     dplyr::select(Code, mult, f_mult)
-
+  
   # add to multispecies yield list
   f_to_m <- rbind(f_to_m, this_f_to_m)
 } 
@@ -907,7 +912,7 @@ for(i in 1:nrow(f35_key)){
     dplyr::select(Time, all_of(t3_fg)) %>%
     pivot_longer(-Time, names_to = "Code", values_to = "mt") %>%
     mutate(mult = this_mult)
-
+  
   eq_catch_list[[i]] <- this_catch
 }
 
@@ -942,7 +947,7 @@ for(i in 1:nrow(f35_key)){
     group_by(Time, Code) %>%
     summarize(mt = sum(biomass_mt))%>%
     mutate(mult = this_mult)
-    
+  
   
   eq_biom_list[[i]] <- this_biom
 }
@@ -961,8 +966,138 @@ eq_biom_df %>%
 # This points to excessive productivity, possibly mediated by excessive recruitment
 # It may be worth repeating the set with (much) lower steepness. Reducing steepness did not help when stocks had mature age classes below the knife edge, but it may help in cases where that is not the case.
 
-# Plot global yield but from single-species (it won't be the same as the other one)
+# Plot global yield but from single-species
+# to make sense, this will be the sum of the single-species yield at FOFL
+# The original range explored was in 8 increments between 0 and 2*FOFL
+# If we bring in idx, we get to explore these rough permutations of F for each stock:
+# 0.0000000 0.2857143 0.5714286 0.8571429 1.1428571 1.4285714 1.7142857 2.0000000
+
+idx_to_mult <- data.frame("fidx" = 1:8, "mult" = seq(0,2,length.out=8))
+
+global_yield_ss <- ss_yield_long_fidx %>%
+  filter(type == "Catch") %>%
+  left_join(f_lookup, by = c("Code"="species","fidx")) %>%
+  left_join(idx_to_mult, by = "fidx") %>%
+  ggplot(aes(x = mult, y = mt / 1000, fill = LongName))+
+  geom_bar(stat = "identity", position = "stack")+
+  scale_fill_viridis_d()+
+  scale_x_continuous(breaks = seq(0,maxmult,length.out=11))+
+  scale_y_continuous(limits = c(0,1100))+
+  geom_hline(yintercept = 116, color = "red", linetype = "dashed")+
+  geom_hline(yintercept = 800, color = "red", linetype = "dashed")+
+  #geom_hline(yintercept = atlantis_oy / 1000, color = "blue", linetype = "dashed")+
+  theme_bw()+
+  labs(x = "FOFL (SS) multiplier", y = "Catch (1000 mt)", fill = "Stock")
+global_yield_ss
+
+ggsave(paste0("NOAA_Azure/results/figures/", batch, "/global_yield_SS.png"), global_yield_ss, width = 8, height = 6)
 
 
-# Plot changes in weight at age
-# this one will be as little more complex but we have all the components (take from code we use)
+# Recruitment -------------------------------------------------------------
+
+# Above we have biomass of the unselected age classes, but to have more of a pulse on what happens with recruitment under different
+# configurations we need to extract numbers at age of the first age class from the nc files
+
+# list nc files
+nc_files <- list.files(paste0("NOAA_Azure/results/f35/",batch), pattern = ".nc", full.names = T)
+
+# get t3 names, make sure you maintain the same order as t3_fg
+t3_names <- grps %>% 
+  filter(Code %in% t3_fg) %>% 
+  mutate(Code = factor(Code, levels = t3_fg)) %>%
+  arrange(Code) %>%
+  pull(Name) 
+
+# function to pull recruits for the T3 stocks
+extract_recruits <- function(ncfile){
+  
+  # get run number and corresponding multiplier for F35
+  this_run <- as.numeric(gsub("_test.nc", "", gsub(".*outputGOA0","", ncfile)))
+  this_mult <- f35_key %>% filter(run == this_run) %>% pull(mult)
+  
+  this_ncfile <- tidync(ncfile)
+  this_ncdata <- nc_open(ncfile)
+  
+  # get variable names for recruitment (numbers of age 0)
+  t3_pattern <- paste(t3_names, collapse = "|")
+  recruit_vars <- this_ncfile %>%
+    hyper_vars() %>%
+    filter(grepl("1_Nums", name)) %>%
+    filter(grepl(t3_pattern, name))
+  
+  # pull data
+  recs <-purrr::map(recruit_vars$name,ncdf4::ncvar_get,nc=this_ncdata) #numbers by fg,box,layer,time
+  
+  # for each group, collapse all spatial dimensions and get 251 values, then cut to the last (5x5) time steps and average for an average of the last 5 years
+  terminal_recruits_list <- lapply(recs, function(arr) {
+    # dims are (7,109,251), i.e. (z,b,t)
+    # Sum over the 'z' dimension (1st dimension)
+    sum_over_z <- apply(arr, c(2, 3), sum)
+    
+    # Sum over the 'b' dimension (now the 1st dimension)
+    sum_over_b <- apply(sum_over_z, 2, sum)
+    
+    # now take avg of last 25 vals (for last 5 years, 5 data points a year)
+    termrec <- mean(tail(sum_over_b), 25)
+    
+    return(termrec)
+  })
+  
+  terminal_recruits <- unlist(terminal_recruits_list)
+  
+  # make a data frame
+  df_rec <- data.frame("Name" = t3_names, "Code" = t3_fg, "R" = terminal_recruits)
+  
+  # tie in the respective mult for this run
+  df_rec <- df_rec %>% mutate(mult = this_mult)
+  
+  return(df_rec)
+  
+}
+
+# apply function to the nc files
+rec_by_mult <- bind_rows(lapply(nc_files, extract_recruits))
+
+# tie to SSB data
+rec_by_mult_df <- rec_by_mult %>%
+  left_join(ms_yield_df, by = c("Code", "mult"))
+
+# make R0 df
+r0 <- rec_by_mult_df %>%
+  filter(mult == 0) %>%
+  select(Code, R) %>%
+  rename(r0 = R)
+
+# join to rec df and get R as proportion of R0
+rec_by_mult_df <- rec_by_mult_df %>%
+  left_join(r0, by = "Code") %>%
+  mutate(rprop = R / r0)
+
+# join b0 df and get SSB as proportion of B0 (depletion)
+rec_by_mult_df <- rec_by_mult_df %>%
+  left_join((b0 %>% 
+               filter(experiment == "ms") %>%
+               left_join(grps %>% 
+                           select(LongName, Code), by = "LongName")) %>%
+              select(Code, b0), 
+            by ="Code") %>%
+  mutate(depletion = biomass_mt / b0)
+
+# plot R vs depletion
+recruitment_plot <- rec_by_mult_df %>%
+  ggplot(aes(x = depletion, y = rprop))+
+  geom_line()+
+  geom_point()+
+  geom_hline(yintercept = 0.5, linetype = "dashed")+
+  geom_vline(xintercept = 0.125, color = "red", linetype = "dashed")+
+  theme_bw()+
+  scale_x_continuous(limits = c(0,1))+
+  scale_y_continuous(limits = c(0,1))+
+  labs(x = "SSB/S0", y = "R/R0")+
+  facet_wrap(~Name)
+  
+ggsave(paste0("NOAA_Azure/results/figures/", batch, "/SR_curve.png"), recruitment_plot, width = 8, height = 6)
+  
+# write out file for comparison plots
+write.csv(rec_by_mult_df %>% mutate(batch = batch), 
+          paste0('NOAA_Azure/results/for_comp/',batch,'_sr.csv'), row.names = F)
