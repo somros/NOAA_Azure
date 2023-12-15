@@ -25,7 +25,8 @@ mfc_vec <- f_mfc_vec %>%
   select(Code, LongName, mfc)
 
 # permute
-mult <- seq(0,2,length.out=11)
+maxmult <- 4
+mult <- seq(0,4,length.out=11)
 
 perm_frame <- data.frame(matrix(nrow = length(mfc_vec$Code), ncol = length(mult)+1))
 colnames(perm_frame) <- c('Code',paste0('p',1:11)) # p6 = F35
@@ -58,7 +59,7 @@ harvest_head <- harvest[1:mfc_start-1]
 harvest_tail <- harvest[mfc_end+1: length(harvest)]
 
 # create a folder where we will store these
-dir.create("NOAA_Azure/code/f35_perms")
+dir.create(paste0("NOAA_Azure/code/f35_perms/", maxmult, "/"))
 
 # loop over species one at a time. Do all species
 fg <- grp$Code
@@ -67,7 +68,7 @@ fg_t3 <- perm_frame$Code
 for(i in 1:length(mult)){
   
   # create file
-  newfile <-  paste0("NOAA_Azure/code/f35_perms/", 'GOA_harvest_f35_', i, '.prm')
+  newfile <-  paste0("NOAA_Azure/code/f35_perms/", maxmult, '/GOA_harvest_f35_', i, '.prm')
   
   file.create(newfile)
   

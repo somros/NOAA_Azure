@@ -1,6 +1,6 @@
 # Alberto Rovellini
 # 11/7/2022
-# this code pulls terminal biomass and catch from each run, and it calculates realized F based on catch in the first year
+# this code pulls terminal biomass and catch from each run, and it calculates realized F based on catch in the last 5 years
 # these variables are stored in a table with one row and written to a csv file, to be processed later
 # NOTE: this version is to pull results from a folder where they have been downloaded from the blob storage
 # If we get the merging to wor, it will be a different scoping possibly
@@ -8,7 +8,7 @@ library(dplyr)
 library(tidyr)
 library(here)
 
-this_job <- "job20231103012611"
+this_job <- "job20231207060427"
 outdir <- paste0('NOAA_Azure/results/post-processing/',this_job)
 dir.create(outdir)
 
@@ -19,11 +19,18 @@ results_list <- list.files(folder_path, full.names = T)
 # list the data
 grp_path <- here('NOAA_Azure/data/GOA_Groups.csv') # functional groups
 mat_path <- here('NOAA_Azure/data/age_at_mat.csv') # maturity at 50%
+fspb_path <- here('NOAA_Azure/data/fspb.csv') # proportion mature at age
 selex_path <- here('NOAA_Azure/data/age_at_selex_new.csv') # selectivity pattern, after adjusting startage
-lookup_path <- here('NOAA_Azure/data/f_lookup.csv')
+lookup_path <- here('NOAA_Azure/data/f_lookup_4.csv')
 
 atlantis_fg <- read.csv(grp_path)
 mat <- read.csv(mat_path, header = T) # age at maturity
+fspb <- read.csv(fspb_path, header = T) # proportion mature
+# reshape fspb
+fspb <- fspb %>%
+  pivot_longer(-Code, names_to = "Age", values_to = "fspb") %>%
+  mutate(Age = gsub("X","",Age))
+
 selex <- read.csv(selex_path, header = T) # age at selectivity
 f_lookup <- read.csv(lookup_path) # lookup for species and F per run
 
@@ -58,9 +65,11 @@ for(i in 1:length(results_list)){
     pivot_longer(everything(), names_to = 'Code.Age', values_to = 'biomass_mt') %>%
     separate_wider_delim(Code.Age, delim = '.', names = c('Code', 'Age')) %>%
     filter(Code == sp) %>%
-    left_join(mat, by = 'Code') %>%
-    mutate(idx = as.numeric(Age) - as.numeric(age_class_mat)) %>%
-    filter(is.na(idx) | idx >= 0) %>%
+    #left_join(mat, by = 'Code') %>%
+    # mutate(idx = as.numeric(Age) - as.numeric(age_class_mat)) %>%
+    # filter(is.na(idx) | idx >= 0) %>%
+    left_join(fspb, by = c('Code','Age')) %>%
+    mutate(biomass_mt = biomass_mt * fspb) %>%
     group_by(Code) %>%
     summarise(biomass_mt = sum(biomass_mt)) %>%
     ungroup() %>%

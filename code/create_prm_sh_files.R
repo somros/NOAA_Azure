@@ -14,21 +14,23 @@ select <- dplyr::select
 
 # Create a folder from the Base model that contains all the harvest.prm and run.sh files
 # This folder needs to be cloned on each node of the foreach loop
-if(!file.exists(here('goa_runs','AtlantisGOA_F_test'))){
-  system(paste('sudo cp -r', here('goa_runs','AtlantisGOA_Base'), here('goa_runs','AtlantisGOA_F_test')))
-  system(paste('sudo chmod -R a+rwx ', here('goa_runs','AtlantisGOA_F_test'))) # add permission
+if(!file.exists(here('goa_runs','AtlantisGOA_F_test_4'))){
+  system(paste('sudo cp -r', here('goa_runs','AtlantisGOA_Base'), here('goa_runs','AtlantisGOA_F_test_4')))
+  system(paste('sudo chmod -R a+rwx ', here('goa_runs','AtlantisGOA_F_test_4'))) # add permission
   # remove harvest.prm and run.sh files as we will create new ones, also remove any output file that may have been copied
   system(paste('sudo rm -r ', 
-               here('goa_runs','AtlantisGOA_F_test','outputFolder/'),
-               here('goa_runs','AtlantisGOA_F_test','out14'),
-               here('goa_runs','AtlantisGOA_F_test','GOA_harvest_background.prm'),
-               here('goa_runs','AtlantisGOA_F_test','RunAtlantis.sh')))
-  system(paste('sudo rm -rf ', here('goa_runs','AtlantisGOA_F_test','.git'))) # get rid of the git tracking from the base model folder
+               here('goa_runs','AtlantisGOA_F_test_4','outputFolder/'),
+               here('goa_runs','AtlantisGOA_F_test_4','out14'),
+               here('goa_runs','AtlantisGOA_F_test_4','GOA_harvest_background.prm'),
+               here('goa_runs','AtlantisGOA_F_test_4','RunAtlantis.sh')))
+  system(paste('sudo rm -rf ', here('goa_runs','AtlantisGOA_F_test_4','.git'))) # get rid of the git tracking from the base model folder
 }
 
 # make mFC vectors based on a range of F:
 # start from 0 and go up to 2*FOFL - test 10 values (closer together the closer to 0 we are?)
+# UPDATE December 2023 - we also want to try with higher F, like 4*OFL, to try and crash these stocks
 # what to do with imposed and realized f?
+maxmult <- 4
 
 # Formula for mFC is mfc = 1-exp(-F / 365)
 
@@ -42,15 +44,15 @@ f_cap <- read_xlsx(here('NOAA_Azure','data','msy.xlsx'), sheet = 1, range = 'A3:
   group_by(Code) %>%
   summarise(FOFL = mean(FOFL)) %>%
   ungroup() %>%
-  mutate(cap = 2*FOFL) %>%
+  mutate(cap = maxmult*FOFL) %>%
   select(-FOFL)
 
 # add halibut (2M)
-f_cap <- rbind(f_cap, data.frame('Code'='HAL', cap = 0.4)) # 0.2*2
+f_cap <- rbind(f_cap, data.frame('Code'='HAL', cap = 0.2 * maxmult)) # 0.2*4
 species_to_test <- unique(f_cap$Code)
 
 # make range of values, stored in a matrix
-n_f <- 8
+n_f <- 1 + 8 # let's count mult = 0, then 8 steps
 mfc_tab <- f_tab <- matrix(NA, nrow = length(species_to_test), ncol = n_f)
 
 # make table of F and mFC values for each species
@@ -75,18 +77,18 @@ for(i in 1:length(species_to_test)){
 mfc_tab <- mfc_tab %>% 
   data.frame() %>% 
   mutate(Code = species_to_test) %>%
-  set_names(c(1:8, 'Code'))
+  set_names(c(1:9, 'Code'))
 
 f_tab <- f_tab %>% 
   data.frame() %>% 
   mutate(Code = species_to_test) %>%
-  set_names(c(1:8, 'Code'))
+  set_names(c(1:9, 'Code'))
 
 prm_file <- here('NOAA_Azure','data','GOA_harvest_background.prm')
 prm_vals <- readLines(prm_file)
 
 # set the path to the Atlantis folder
-f_path <- here('goa_runs','AtlantisGOA_F_test')
+f_path <- here('goa_runs','AtlantisGOA_F_test_4')
 
 # Produce a look-up table for which species and F each file corresponds to
 # do for each species
@@ -128,7 +130,7 @@ for(sp in species_to_test){
 }
 
 f_lookup <- bind_rows(f_lookup_ls) # save this 
-write.csv(f_lookup, here('NOAA_Azure','data','f_lookup.csv'),row.names = F)
+write.csv(f_lookup, here('NOAA_Azure','data','f_lookup_4.csv'),row.names = F)
 
 # now make the RunAtlantis.sh scripts pointing to the correct path and creating the correct output
 for (idx in f_lookup$idx) {

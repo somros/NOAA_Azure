@@ -19,7 +19,7 @@ grp_path <- here('NOAA_Azure/data/GOA_Groups.csv') # functional groups
 grps <- read.csv(grp_path)
 
 # list all csv files we need to read
-this_job <- "job20231103012611"
+this_job <- "job20231207060427"
 f_files <- list.files(paste0("NOAA_Azure/results/post-processing/",this_job), full.names = T)
 
 # create empty list to fill with data frame for the yield curve

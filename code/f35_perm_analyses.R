@@ -5,6 +5,10 @@
 # 2. Plots biomass and yield curves next to the old ones
 # 3. Plots a number of diagnostics (biomass of unselected age classes, biomass of predators and forage fish, yield functions, etc.)
 
+# Update 12/14/2023
+# Dropping age at maturity entirely and using FSPB to get SSB
+# TODO: change single-species stuff too, but first see how they compare
+
 library(tidyverse)
 library(readxl)
 library(ggh4x)
@@ -15,10 +19,10 @@ library(ncdf4)
 # Set up env and read data ------------------------------------------------
 
 # identify which data we want to work on
-batch <- "atf_fixed"
-this_job <- "job20231103012611" # and which job to use for the single-species stuff
-runs <- 1437:1447
-maxmult <- 2
+batch <- "fspb_beta_new"
+this_job <- "job20231207060427" # and which job to use for the single-species stuff
+runs <- 1485:1495
+maxmult <- 4
 
 # set the clock to date plots
 t <- format(Sys.time(),'%Y-%m-%d %H-%M-%S')
@@ -30,9 +34,14 @@ grps <- read.csv(grp_path)
 # read maturity and selectivity information
 mat <- read.csv("NOAA_Azure/data/age_at_mat.csv", header = T) # age at maturity
 selex <- read.csv("NOAA_Azure/data/age_at_selex_new.csv", header = T) # age at selectivity
+fspb <- read.csv("NOAA_Azure/data/fspb.csv", header = T) # proportion of spawning biomass per age class
+# reshape fspb
+fspb <- fspb %>%
+  pivot_longer(-Code, names_to = "Age", values_to = "fspb") %>%
+  mutate(Age = gsub("X","",Age))
 
 # read in lookup tables and f35 proxy values
-f_lookup <- read.csv("NOAA_Azure/data/f_lookup.csv")
+f_lookup <- read.csv("NOAA_Azure/data/f_lookup_4.csv")
 f35_vector <- read.csv("NOAA_Azure/data/f35_vector_PROXY.csv")
 
 # list Tier 3 stocks 
@@ -144,9 +153,11 @@ for(i in 1:nrow(f35_key)){
     pivot_longer(everything(), names_to = 'Code.Age', values_to = 'biomass_mt') %>%
     separate_wider_delim(Code.Age, delim = '.', names = c('Code', 'Age')) %>%
     filter(Code %in% t3_fg) %>%
-    left_join(mat, by = 'Code') %>%
-    mutate(idx = as.numeric(Age) - as.numeric(age_class_mat)) %>%
-    filter(is.na(idx) | idx >= 0) %>%
+    #left_join(mat, by = 'Code') %>%
+    # mutate(idx = as.numeric(Age) - as.numeric(age_class_mat)) %>%
+    # filter(is.na(idx) | idx >= 0) %>%
+    left_join(fspb, by = c('Code','Age')) %>%
+    mutate(biomass_mt = biomass_mt * fspb) %>%
     group_by(Code) %>%
     summarise(biomass_mt = sum(biomass_mt)) %>%
     ungroup()
@@ -408,6 +419,44 @@ ggsave(paste0('NOAA_Azure/results/figures/',batch,'/yield_curves',t,'_MS_2.png')
 # save the file as a csv to compare it to other runs
 write.csv(to_plot %>% mutate(batch = batch), 
           paste0('NOAA_Azure/results/for_comp/',batch,'_ms_vs_ss.csv'), row.names = F)
+
+# for joint meeting AFSC December 2023
+max_f <- to_plot %>%
+  group_by(Code, experiment) %>%
+  slice_max(f) %>%
+  ungroup() %>%
+  select(Code, experiment, f) %>%
+  distinct() %>%
+  rename(max_f = f) %>%
+  group_by(Code) %>%
+  slice_min(max_f) %>%
+  select(Code, max_f) %>%
+  mutate(max_f = max_f + max_f*0.2)
+
+# cut SS f to values smaller than ms f for each species
+to_plot_cut <- to_plot %>%
+  left_join(max_f, by = "Code") %>%
+  mutate(keep = ifelse(f <= max_f, 1, 0)) %>%
+  filter(keep == 1)
+
+grp3 <- c("Arrowtooth\nflounder", "Pacific\ncod", "Walleye\npollock", "Shallow-water\nflatfish")
+f_plot3 <- to_plot_cut %>%
+  filter(LongNamePlot %in% grp3) %>%
+  ggplot(aes(x = f, y = mt/1000, color = experiment))+
+  geom_line(linewidth = 1)+
+  #geom_point(size = 1.6)+
+  scale_color_viridis_d(begin = 0.2, end = 0.8)+
+  #geom_vline(data = fmsy %>% filter(LongNamePlot %in% grp3), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
+  geom_vline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp3), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
+  geom_hline(data = b35 %>% filter(LongNamePlot %in% grp3), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
+  theme_bw()+
+  scale_y_continuous(limits = c(0, NA))+
+  labs(x = 'F', y = '1000\'s of tons')+
+  facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
+  theme(strip.text.y = element_text(angle=0))
+ggsave(paste0('NOAA_Azure/results/figures/',batch,'/yield_curves',t,'_MS_3.png'), f_plot3, width = 7, height = 5)
+
+
 ##############################################################################################
 
 # Multispecies yield is always higher than single species yield. 
@@ -735,6 +784,32 @@ write.csv(ms_other_df %>% mutate(batch = batch),
 # overall pretty minimal differences, but in general prey increases (a little) and predators decrease (a little) under higher fishing
 # perhaps more of a case for KWR (halved), SSL (-25% or so), and sharks (small declines), the rest does fairly well under fishing
 
+# for joint meeting AFSC
+other_plot_top_jm <- ms_other_df %>%
+  filter(Code %in% c("KWR","SSL","BDF")) %>%
+  ggplot(aes(x = mult, y = biomchange))+
+  geom_line()+
+  geom_point()+
+  geom_hline(yintercept = 1, color = "red", linetype = "dashed")+
+  geom_vline(xintercept = 1, color = "blue", linetype = "dotted")+
+  theme_bw()+
+  labs(x = "", y = "")+
+  facet_wrap(~LongName, nrow = 1)
+
+other_plot_forage_jm <- ms_other_df %>%
+  filter(Code %in% c("CAP","SAN","HER")) %>%
+  ggplot(aes(x = mult, y = biomchange))+
+  geom_line()+
+  geom_point()+
+  geom_hline(yintercept = 1, color = "red", linetype = "dashed")+
+  geom_vline(xintercept = 1, color = "blue", linetype = "dotted")+
+  theme_bw()+
+  labs(x = "F35 permutation", y = "Change in biomass from unfished")+
+  facet_wrap(~LongName, nrow = 1)
+
+combined_plot <- cowplot::plot_grid(plotlist = list(other_plot_top_jm, other_plot_forage_jm), ncol = 1)
+ggsave(paste0("NOAA_Azure/results/figures/",batch,"/other_for_meeting.pdf"), combined_plot, width = 8, height = 4)
+
 # Diagnostics: M -----------------------------------------------------------------------
 
 f35_mort_files <- list.files(f35_path, pattern = "Mort", full.names = T)
@@ -790,8 +865,9 @@ mp
 # apart from the scale that is all over the place, M decreases with increasing F for ATF, FFD, FHS, COD, RFS, and POL - likely all ATF's prey items
 # More surprisingly, M increases with F for HAL, POP, REX, RFP, SBF. Need to investigate, but one possible explanation is that their (very few) predators (like SSL and KWR) switch from some of the depleted groundfish to these other species
 
-# to convey the same message without worrying about the scale, do this relative to mult = 2.0
-m_df_mult02 <- m_df %>% filter(mult == 0.2) %>% dplyr::select(LongName, m) %>% rename(m02 = m) %>% distinct()
+# to convey the same message without worrying about the scale, do this relative to mult = 2.0 (or 0.4)
+if(maxmult == 2) {minmult <- 0.2} else {minmult <- 0.4}
+m_df_mult02 <- m_df %>% filter(mult == minmult) %>% dplyr::select(LongName, m) %>% rename(m02 = m) %>% distinct()
 m_df_rel <- m_df %>%
   left_join(m_df_mult02, by = "LongName") %>%
   mutate(rel_m = m / m02)
@@ -941,9 +1017,11 @@ for(i in 1:nrow(f35_key)){
     pivot_longer(-Time, names_to = 'Code.Age', values_to = 'biomass_mt') %>%
     separate_wider_delim(Code.Age, delim = '.', names = c('Code', 'Age')) %>%
     filter(Code %in% t3_fg) %>%
-    left_join(mat, by = 'Code') %>%
-    mutate(idx = as.numeric(Age) - as.numeric(age_class_mat)) %>%
-    filter(is.na(idx) | idx >= 0) %>%
+    #left_join(mat, by = 'Code') %>%
+    # mutate(idx = as.numeric(Age) - as.numeric(age_class_mat)) %>%
+    # filter(is.na(idx) | idx >= 0) %>%
+    left_join(fspb, by = c('Code','Age')) %>%
+    mutate(biomass_mt = biomass_mt * fspb) %>%
     group_by(Time, Code) %>%
     summarize(mt = sum(biomass_mt))%>%
     mutate(mult = this_mult)
@@ -972,7 +1050,7 @@ eq_biom_df %>%
 # If we bring in idx, we get to explore these rough permutations of F for each stock:
 # 0.0000000 0.2857143 0.5714286 0.8571429 1.1428571 1.4285714 1.7142857 2.0000000
 
-idx_to_mult <- data.frame("fidx" = 1:8, "mult" = seq(0,2,length.out=8))
+idx_to_mult <- data.frame("fidx" = 1:8, "mult" = seq(0,maxmult,length.out=8))
 
 global_yield_ss <- ss_yield_long_fidx %>%
   filter(type == "Catch") %>%
@@ -1006,7 +1084,8 @@ t3_names <- grps %>%
   filter(Code %in% t3_fg) %>% 
   mutate(Code = factor(Code, levels = t3_fg)) %>%
   arrange(Code) %>%
-  pull(Name) 
+  pull(Name) %>%
+  sort()
 
 # function to pull recruits for the T3 stocks
 extract_recruits <- function(ncfile){
@@ -1023,7 +1102,8 @@ extract_recruits <- function(ncfile){
   recruit_vars <- this_ncfile %>%
     hyper_vars() %>%
     filter(grepl("1_Nums", name)) %>%
-    filter(grepl(t3_pattern, name))
+    filter(grepl(t3_pattern, name)) %>%
+    arrange(name)
   
   # pull data
   recs <-purrr::map(recruit_vars$name,ncdf4::ncvar_get,nc=this_ncdata) #numbers by fg,box,layer,time
@@ -1095,9 +1175,210 @@ recruitment_plot <- rec_by_mult_df %>%
   scale_y_continuous(limits = c(0,1))+
   labs(x = "SSB/S0", y = "R/R0")+
   facet_wrap(~Name)
-  
+
 ggsave(paste0("NOAA_Azure/results/figures/", batch, "/SR_curve.png"), recruitment_plot, width = 8, height = 6)
-  
+
 # write out file for comparison plots
 write.csv(rec_by_mult_df %>% mutate(batch = batch), 
           paste0('NOAA_Azure/results/for_comp/',batch,'_sr.csv'), row.names = F)
+
+
+# Weight at age -----------------------------------------------------------
+
+# This is not too likely to be a problem, but look at weight at age of the exploited groups
+# In principle, if weight at age is really high for old age classes, catch may be high at low numbers, and more recruits will be produced
+
+extract_waa <- function(ncfile){
+  
+  # get run number and corresponding multiplier for F35
+  this_run <- as.numeric(gsub("_test.nc", "", gsub(".*outputGOA0","", ncfile)))
+  this_mult <- f35_key %>% filter(run == this_run) %>% pull(mult)
+  
+  this_ncfile <- tidync(ncfile)
+  this_ncdata <- nc_open(ncfile)
+  
+  ts <- ncdf4::ncvar_get(this_ncdata,varid = "t") %>% as.numeric
+  tyrs <- ts/(60*60*24*365)
+  
+  # do one fg at a time, then bring them back together
+  waa_frame <- data.frame()
+  for (i in 1:length(t3_names)){
+    
+    fg <- t3_names[i]
+    
+    #Extract from the output .nc file the appropriate reserve N time series variables
+    resN_vars <- hyper_vars(this_ncfile) %>% # all variables in the .nc file active grid
+      filter(grepl("_ResN",name)) %>% # filter for reserve N
+      filter(grepl(fg,name)) # filter for specific functional group
+    
+    #Extract from the output .nc file the appropriate structural N time series variables
+    strucN_vars <- hyper_vars(this_ncfile) %>% # all variables in the .nc file active grid
+      filter(grepl("_StructN",name)) %>% # filter for structural N
+      filter(grepl(fg,name)) # filter for specific functional group
+    
+    # Get numbers by box
+    abun_vars <- hyper_vars(this_ncfile) %>% # all variables in the .nc file active grid
+      filter(grepl("_Nums",name)) %>% # filter for abundance variables
+      filter(grepl(fg,name)) # filter for specific functional group
+    
+    resN <- purrr::map(resN_vars$name,ncdf4::ncvar_get,nc=this_ncdata) 
+    strucN <- purrr::map(strucN_vars$name,ncdf4::ncvar_get,nc=this_ncdata)
+    nums <-purrr::map(abun_vars$name,ncdf4::ncvar_get,nc=this_ncdata) #numbers by age group,box,layer,time
+    totnums <-nums %>% purrr::map(apply,MARGIN=3,FUN=sum) # total numbers by age group, time
+    relnums <- purrr::map2(nums,totnums,sweep,MARGIN=3,FUN=`/`) # divide nums by totnums along the time axis to get relative annual nums per age group/box/layer
+    
+    # add the two matrices to get total nitrogen weight
+    rnsn <- purrr::map2(resN,strucN,`+`)
+    
+    # multiply and sum to get abundance-weighted mean weight at age
+    rnsn_summ <- purrr::map2(rnsn,relnums,`*`) %>% 
+      purrr::map(apply,MARGIN=3,FUN=sum) %>% # mean total N by time
+      bind_cols() %>% # bind age groups elements together
+      suppressMessages() %>% 
+      set_names(resN_vars$name) %>% 
+      mutate(t=tyrs) %>%
+      # pivot to long form
+      pivot_longer(cols = -t,names_to = 'age_group',values_to = 'totN') %>%
+      mutate(age=parse_number(age_group)) %>% 
+      mutate(weight=totN*20*5.7/1000000) %>%   # convert totN to weight/individual in kg
+      dplyr::filter(t>0) %>%
+      mutate(year = ceiling(t)) %>%
+      group_by(year, age_group, age) %>%
+      summarise(weight = mean(weight)) %>%
+      ungroup() %>%
+      mutate(Name = t3_names[i]) %>%
+      dplyr::select(year, Name, age, weight)
+    
+    # get end of the time series (last 5 years average)
+    rnsn_summ <- rnsn_summ %>%
+      slice_max(year, n = 5) %>%
+      group_by(Name, age) %>%
+      summarize(weight = mean(weight)) %>%
+      ungroup()
+    
+    waa_frame <- rbind(waa_frame, rnsn_summ)
+    
+  }
+  
+  # add multiplier for the run
+  waa_frame <- waa_frame %>%
+    mutate(mult = this_mult)
+  
+  return(waa_frame)
+  
+}
+
+# apply function to the nc files
+waa <- bind_rows(lapply(nc_files, extract_waa))
+
+# plot
+waa_plot <- waa %>%
+  ggplot(aes(x = mult, y = weight, color = factor(age)))+
+  geom_line()+
+  scale_color_viridis_d()+
+  theme_bw()+
+  facet_wrap(~Name, scales = "free")
+
+ggsave(paste0("NOAA_Azure/results/figures/", batch, "/WAA.png"), waa_plot, width = 10, height = 8)
+
+# not seeing any exceedingly worrying pattern in weight at age
+
+# Numbers at age ----------------------------------------------------------
+
+# as final diagnostic (grasping...), look at the numbers at age
+# expected to decline and be fairly close to 0 for older age classes when SSB is near 0
+# should that not be the case, there is an iddues with how we count biomass
+
+fl <- 'NOAA_Azure/data/GOA_WGS84_V4_final.bgm'
+bgm <- rbgm::read_bgm(fl)
+goa_sf <- rbgm::box_sf(bgm)
+boundary_boxes <- goa_sf %>% filter(boundary == TRUE) %>% pull(box_id) # get boundary boxes
+# function to set values in the boundary boxes to NA
+setNA <- function(mat) {
+  mat2 <- mat
+  if(length(dim(mat2))==3) mat2[,(boundary_boxes+1),]<-NA
+  if(length(dim(mat2))==2) mat2[(boundary_boxes+1),] <- NA
+  mat2
+}
+
+# function sum over depth layers in each array slice
+collapse_array <- function(mat){
+  mat2 <- apply(mat, 3, colSums)
+  mat3 <- data.frame(t(mat2))
+  colnames(mat3) <- 0:108
+  mat3
+}
+
+extract_naa <- function(ncfile){
+  
+  # get run number and corresponding multiplier for F35
+  this_run <- as.numeric(gsub("_test.nc", "", gsub(".*outputGOA0","", ncfile)))
+  this_mult <- f35_key %>% filter(run == this_run) %>% pull(mult)
+  
+  this_ncfile <- tidync(ncfile)
+  this_ncdata <- nc_open(ncfile)
+  
+  ts <- ncdf4::ncvar_get(this_ncdata,varid = "t") %>% as.numeric
+  tyrs <- ts/(60*60*24*365)
+  
+  # do one fg at a time, then bring them back together
+  naa_frame <- data.frame()
+  for (i in 1:length(t3_names)){
+    
+    fg <- t3_names[i]
+    
+    # Get numbers by box
+    abun_vars <- hyper_vars(this_ncfile) %>% # all variables in the .nc file active grid
+      filter(grepl("_Nums",name)) %>% # filter for abundance variables
+      filter(grepl(fg,name)) # filter for specific functional group
+    
+    abun1 <- purrr::map(abun_vars$name,ncdf4::ncvar_get,nc=this_ncdata) %>% 
+      lapply(setNA) %>%
+      purrr::map(apply,MARGIN=3,FUN=sum,na.rm=T) %>% 
+      bind_cols() %>% 
+      suppressMessages() %>% 
+      set_names(abun_vars$name) %>% 
+      mutate(t=tyrs)
+    
+    abun2 <- abun1 %>%
+      pivot_longer(cols = -t,names_to = 'age_group',values_to = 'abun') %>%
+      mutate(age=parse_number(age_group)) %>%
+      mutate(year = ceiling(t)) %>%
+      group_by(year, age_group, age) %>%
+      summarise(abun = mean(abun)) %>%
+      ungroup() %>%
+      mutate(Name = t3_names[i]) %>%
+      dplyr::select(year, Name, age, abun)
+    
+    # get end of the time series (last 5 years average)
+    abun3 <- abun2 %>%
+      slice_max(year, n = 5) %>%
+      group_by(Name, age) %>%
+      summarize(abun = mean(abun)) %>%
+      ungroup()
+    
+    naa_frame <- rbind(naa_frame, abun3)
+    
+  }
+  
+  # add multiplier for the run
+  naa_frame <- naa_frame %>%
+    mutate(mult = this_mult)
+  
+  return(naa_frame)
+  
+}
+
+# apply function to the nc files
+naa <- bind_rows(lapply(nc_files, extract_naa))
+
+# plot
+naa_plot <- naa %>%
+  ggplot(aes(x = mult, y = abun, color = factor(age)))+
+  geom_line()+
+  scale_color_viridis_d()+
+  theme_bw()+
+  facet_wrap(~Name, scales = "free")
+
+ggsave(paste0("NOAA_Azure/results/figures/", batch, "/NAA.png"), naa_plot, width = 10, height = 8)
+

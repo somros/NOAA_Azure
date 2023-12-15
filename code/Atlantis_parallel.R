@@ -68,7 +68,7 @@ registerDoAzureParallel(cluster)
 getDoParWorkers()
 
 # read in lookup table for the indices
-f_lookup <- read.csv(here('NOAA_Azure','data','f_lookup.csv'), header = TRUE)
+f_lookup <- read.csv(here('NOAA_Azure','data','f_lookup_4.csv'), header = TRUE)
 runidx <- f_lookup$idx # as many runs as you want to do, would be 96 for us
 #runidx <- 1:4 #for debugging
 
@@ -128,7 +128,7 @@ atlantis.scenarios <- foreach(idx=runidx, .options.azure=opts, .errorhandling = 
   system("cd for_pw/trunk/atlantis; aclocal; autoheader; autoconf; automake -a; ./configure; sudo make CFLAGS='-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H -Wno-misleading-indentation -Wno-format -Wno-implicit-fallthrough'; sudo make -d install", wait = TRUE)
   
   # now clone the F test folder from GitHub
-  system("git clone https://github.com/somros/AtlantisGOA_F_test.git")
+  system("git clone https://github.com/somros/AtlantisGOA_F_test_4.git")
   
   # # List of R packages for session
   .packages = c("data.table","dplyr","tidyr","stringr","R.utils","magrittr","here")
@@ -144,10 +144,10 @@ atlantis.scenarios <- foreach(idx=runidx, .options.azure=opts, .errorhandling = 
   this_sh <- paste('RunAtlantis_',idx,".sh",sep="") # this is the sh for this run
   #
   # run Atlantis scenario
-  system(paste("cd AtlantisGOA_F_test/; flip -uv *; sh ", this_sh, sep=""), wait = TRUE)
+  system(paste("cd AtlantisGOA_F_test_4/; flip -uv *; sh ", this_sh, sep=""), wait = TRUE)
 
   # get the files we need
-  outFolder <- paste("AtlantisGOA_F_test/output",sep="_")
+  outFolder <- paste("AtlantisGOA_F_test_4/output",sep="_")
   biomage_filename <- list.files(path = outFolder, pattern = 'AgeBiomIndx.txt')[1]
   
   biomage_path <- file.path(outFolder, biomage_filename, fsep = "/") # biomass by age
