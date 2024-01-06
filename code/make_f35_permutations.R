@@ -11,7 +11,7 @@ library(tidyverse)
 f_vec <- read.csv("NOAA_Azure/data/f35_vector_PROXY.csv")
 
 # Read f-lookup table for mFC - so we don't have to make the conversion
-f_lookup <- read.csv("NOAA_Azure/data/f_lookup.csv")
+f_lookup <- read.csv("NOAA_Azure/data/f_lookup_4.csv")
 
 # read fg
 grp <- read.csv('NOAA_Azure/data/GOA_Groups.csv') # functional groups
@@ -29,7 +29,7 @@ maxmult <- 4
 mult <- seq(0,4,length.out=11)
 
 perm_frame <- data.frame(matrix(nrow = length(mfc_vec$Code), ncol = length(mult)+1))
-colnames(perm_frame) <- c('Code',paste0('p',1:11)) # p6 = F35
+colnames(perm_frame) <- c('Code',paste0('p',1:11)) 
 
 for(i in 1:length(mfc_vec$Code)){
   
@@ -47,6 +47,7 @@ select <- dplyr::select
 
 # for species that aren't the Tier 3 stocks (focus of this effort), we need to pull old values (1/4 M)
 # read in the desired harvest.prm file. Take one from the F tests, as those have the correct startage and mFC for other species 
+# NB: make sure the background values coinceide between the SS and MS runs. That is, change this when we finally update this with improved SS runs.
 harvest <- readLines("goa_runs/AtlantisGOA_F_test/GOA_harvest_1.prm")
 # the string we use to split the file is "# Forced fishing mortality rates - one entry per fishery". This may change in other models
 mfc_start <- grep("# Forced fishing mortality rates - one entry per fishery", harvest)
@@ -97,3 +98,39 @@ for(i in 1:length(mult)){
   writeLines(new_harvest, con = newfile)
   
 }
+
+# optional lines to take a set of already generated F35 permutations and create a new set where ATF is fixed to background values
+# Careful with what you choose for background values
+harvest_bg <- readLines("NOAA_Azure/data/GOA_harvest_background.prm")
+atf_mfc_bg <- harvest_bg[grep("mFC_ATF 33",harvest_bg)+1]
+
+# make ATF folder as a copy of an existing folder
+dir.create("NOAA_Azure/code/f35_perms/4-ATF-low")
+
+# files to change
+files_atf <- list.files("NOAA_Azure/code/f35_perms/4", full.names = T)
+# reorder these based on the number in the filename
+num_idx <- as.numeric(sub(".*_([0-9]+)\\.prm", "\\1", files_atf))
+files_atf <- files_atf[order(num_idx)]
+
+# change the line for ATF for each of these files
+for(i in 1:length(files_atf)){
+  
+  # create file
+  newfile <-  paste0("NOAA_Azure/code/f35_perms/", maxmult, '-ATF-low/GOA_harvest_f35_', i, '_ATF.prm')
+  
+  file.create(newfile)
+  
+  to_change <- readLines(files_atf[i])
+  
+  # which line do we need to change?
+  to_change[grep("mFC_ATF 33",to_change)+1] <- atf_mfc_bg
+  
+  # write this to file
+  writeLines(to_change, con = newfile)
+  
+}
+
+# now copy all these over to a folder based on AtlantisGOA_F_test
+# NB: Careful - when we do this for real you'll want to make sure you base it on a folder like the OY ones - make sure biological parameters are consistent between SS and MS
+

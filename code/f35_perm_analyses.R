@@ -20,7 +20,7 @@ library(ncdf4)
 
 # identify which data we want to work on
 batch <- "fspb_beta_new"
-this_job <- "job20231207060427" # and which job to use for the single-species stuff
+this_job <- "job20231103012611" # and which job to use for the single-species stuff
 runs <- 1485:1495
 maxmult <- 4
 
@@ -1188,6 +1188,18 @@ write.csv(rec_by_mult_df %>% mutate(batch = batch),
 # This is not too likely to be a problem, but look at weight at age of the exploited groups
 # In principle, if weight at age is really high for old age classes, catch may be high at low numbers, and more recruits will be produced
 
+fl <- 'NOAA_Azure/data/GOA_WGS84_V4_final.bgm'
+bgm <- rbgm::read_bgm(fl)
+goa_sf <- rbgm::box_sf(bgm)
+boundary_boxes <- goa_sf %>% sf::st_set_geometry(NULL) %>% filter(boundary == TRUE) %>% pull(box_id) # get boundary boxes
+# function to set values in the boundary boxes to NA
+setNA <- function(mat) {
+  mat2 <- mat
+  if(length(dim(mat2))==3) mat2[,(boundary_boxes+1),]<-NA
+  if(length(dim(mat2))==2) mat2[(boundary_boxes+1),] <- NA
+  mat2
+}
+
 extract_waa <- function(ncfile){
   
   # get run number and corresponding multiplier for F35
@@ -1288,18 +1300,6 @@ ggsave(paste0("NOAA_Azure/results/figures/", batch, "/WAA.png"), waa_plot, width
 # as final diagnostic (grasping...), look at the numbers at age
 # expected to decline and be fairly close to 0 for older age classes when SSB is near 0
 # should that not be the case, there is an iddues with how we count biomass
-
-fl <- 'NOAA_Azure/data/GOA_WGS84_V4_final.bgm'
-bgm <- rbgm::read_bgm(fl)
-goa_sf <- rbgm::box_sf(bgm)
-boundary_boxes <- goa_sf %>% filter(boundary == TRUE) %>% pull(box_id) # get boundary boxes
-# function to set values in the boundary boxes to NA
-setNA <- function(mat) {
-  mat2 <- mat
-  if(length(dim(mat2))==3) mat2[,(boundary_boxes+1),]<-NA
-  if(length(dim(mat2))==2) mat2[(boundary_boxes+1),] <- NA
-  mat2
-}
 
 # function sum over depth layers in each array slice
 collapse_array <- function(mat){

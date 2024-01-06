@@ -4,11 +4,14 @@
 # these variables are stored in a table with one row and written to a csv file, to be processed later
 # NOTE: this version is to pull results from a folder where they have been downloaded from the blob storage
 # If we get the merging to wor, it will be a different scoping possibly
+
+# here is an example to check out with azcopy:
+# sudo azcopy cp "https://atlantisgoastorage.blob.core.windows.net/job20231228020254?sp=rl&st=2024-01-05T20:02:16Z&se=2024-01-06T04:02:16Z&spr=https&sv=2022-11-02&sr=c&sig=7U2qIPMQTSGr8HpbDsrnRW6b5DvGeEwi3T%2Bfw8yhFUg%3D" "." --recursive --include-pattern="*result.rds"
 library(dplyr)
 library(tidyr)
 library(here)
 
-this_job <- "job20231207060427"
+this_job <- "job20231228020254"
 outdir <- paste0('NOAA_Azure/results/post-processing/',this_job)
 dir.create(outdir)
 
@@ -21,7 +24,7 @@ grp_path <- here('NOAA_Azure/data/GOA_Groups.csv') # functional groups
 mat_path <- here('NOAA_Azure/data/age_at_mat.csv') # maturity at 50%
 fspb_path <- here('NOAA_Azure/data/fspb.csv') # proportion mature at age
 selex_path <- here('NOAA_Azure/data/age_at_selex_new.csv') # selectivity pattern, after adjusting startage
-lookup_path <- here('NOAA_Azure/data/f_lookup_4.csv')
+lookup_path <- here('NOAA_Azure/data/f_lookup_OY_SS.csv')
 
 atlantis_fg <- read.csv(grp_path)
 mat <- read.csv(mat_path, header = T) # age at maturity
@@ -46,7 +49,7 @@ for(i in 1:length(results_list)){
 
   # first identify the species and the level of fishing for this run. These are unrelated from runname
   sp <- f_lookup %>% filter(idx == this_idx) %>% pull(species)
-  fidx <- f_lookup %>% filter(idx == this_idx) %>% pull(fidx)
+  fidx <- f_lookup %>% filter(idx == this_idx) %>% pull(mult_idx)
   
   # rename the result object in the list to avoid problems with indexing
   names(this_result) <- "res"
@@ -54,6 +57,16 @@ for(i in 1:length(results_list)){
   # extract tables from results
   biomage <- this_result$res[[paste0("biomage_",this_idx)]]
   catch <- this_result$res[[paste0("catch_",this_idx)]]
+  
+  # # check catch soemthis in wrong
+  # catch %>%
+  #   select(Time:BIV) %>%
+  #   pivot_longer(-Time, names_to = "Code", values_to = "mt") %>%
+  #   filter(Time > 0) %>%
+  #   ggplot()+
+  #   geom_line(aes(x = Time, y = mt))+
+  #   geom_vline(xintercept = 30*365, color = "red")+
+  #   facet_wrap(~Code, scales = "free")
   
   # now extract data
   #biodat_age_tmp <- read.table('../Parametrization/output_files/data/out_1342/outputGOA01342_testAgeBiomIndx.txt', sep = ' ', header = T)
@@ -83,9 +96,10 @@ for(i in 1:length(results_list)){
     mean()
   
   # # calculate realized F after 1 year of data
+  # For runs with a burn-in, this has to be the biomass at the end of the burn-in, when we start fishing with the new scalar
   # # get initial biomass for the selected age classes
   biom_age_t1 <- biomage %>% 
-    filter(Time == 0) %>% 
+    filter(Time == 365 * 30) %>%# this is the burn-in years
     pivot_longer(-Time, names_to = 'Code.Age', values_to = 'biomass') %>%
     separate_wider_delim(Code.Age, delim = '.', names = c('Code', 'Age')) %>%
     left_join(selex, by = 'Code') %>%

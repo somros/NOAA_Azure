@@ -1,8 +1,8 @@
 # compare two sets of runs / setups
 library(tidyverse)
 
-run1 <- "atf_fixed"
-run2 <- "base_experiment"
+run1 <- "fspb_beta_new"
+run2 <- "beta10"
 
 # make folder for plots
 outdir <- paste0("NOAA_Azure/results/figures/comparisons/",run1,"_vs_",run2,"/")
