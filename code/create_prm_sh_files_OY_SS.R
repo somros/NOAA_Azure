@@ -10,6 +10,10 @@
 # This needs to now incorporate a burn-in of 30 years
 # we need to use the parameters:
 
+# flagchangeF 1
+
+# flagFchange_XXX 1
+
 # XXX_mFC_changes	33
 # 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ## because it is BG fishing that changes
 

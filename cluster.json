@@ -5,7 +5,7 @@
     "poolSize": {
       "dedicatedNodes": {
         "min": 2,
-        "max": 54
+        "max": 22
       },
       "lowPriorityNodes": {
         "min": 0,
