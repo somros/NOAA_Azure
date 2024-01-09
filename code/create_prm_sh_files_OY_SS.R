@@ -95,18 +95,24 @@ for(sp in stocks){
     this_mult <- mult[m] * 4 # because the default is 1/4 FOFL (calibrated)
     
     # find the lines that have parameters for the species of interest
+    # flagchangeF 1
+    l1 <- grep('flagchangeF', prm_vals)
+    new_l1 <- 'flagchangeF	1	 ## F mortality rate forcing changes [1] Yes or [0] remains constant'
+    # flagFchange_XXX 1
+    l2 <- grep(paste0('flagFchange_',this_sp), prm_vals) + 1
+    new_l2 <- paste(as.character(c(1, rep(0, nfleet-1))), collapse = ' ') # turns the species-specific flag to 1
     # XXX_mFC_changes 
-    l1 <- grep(paste0(this_sp,'_mFC_changes'), prm_vals) + 1
-    new_l1 <- paste(as.character(c(1, rep(0, nfleet-1))), collapse = ' ')
+    l3 <- grep(paste0(this_sp,'_mFC_changes'), prm_vals) + 1
+    new_l3 <- paste(as.character(c(1, rep(0, nfleet-1))), collapse = ' ')
     # mFCchange_start_XXX
-    l2 <- grep(paste0('mFCchange_start_',this_sp), prm_vals) + 1
-    new_l2 <- as.character(10950) # 30 * 365 # because the burn-in is 30 years
+    l4 <- grep(paste0('mFCchange_start_',this_sp), prm_vals) + 1
+    new_l4 <- as.character(10950) # 30 * 365 # because the burn-in is 30 years
     # mFCchange_period_XXX
-    l3 <- grep(paste0('mFCchange_period_',this_sp), prm_vals) + 1
-    new_l3 <- as.character(1) # do the change over 1 day (instantly)
+    l5 <- grep(paste0('mFCchange_period_',this_sp), prm_vals) + 1
+    new_l5 <- as.character(1) # do the change over 1 day (instantly)
     # mFCchange_mult_XXX
-    l4 <- grep(paste0('mFCchange_mult_',this_sp), prm_vals) + 1
-    new_l4 <- as.character(this_mult) 
+    l6 <- grep(paste0('mFCchange_mult_',this_sp), prm_vals) + 1
+    new_l6 <- as.character(this_mult) 
     
     # make a new harvest.prm object and modify it
     prm_new <- prm_vals
@@ -114,6 +120,8 @@ for(sp in stocks){
     prm_new[l2] <- new_l2
     prm_new[l3] <- new_l3
     prm_new[l4] <- new_l4
+    prm_new[l5] <- new_l5
+    prm_new[l6] <- new_l6
     
     # write to file
     writeLines(prm_new, con = newfile)
