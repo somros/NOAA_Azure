@@ -32,8 +32,8 @@
 # The range of multipliers on FOFL is important - if we push it to 4 FOFL we lack the resolution to get F35, but if we only do up to 2 * FOFL we miss what happens at high F
 # Options are:
 # 1. Do a lot of runs (unweildy and unnecessary)
-# 2. Do uneven spacing of the multipliers: 0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 2.0, 2.5, 3.0, 4.0
-# this would be 16 * 12 = 192 runs - seems reasonable
+# 2. Do uneven spacing of the multipliers: c(0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 2.0, 2.5, 3.0, 4.0)
+# this would be 13 * 12 = 156 runs - seems reasonable
 # The multipliers will need to be:
 # 1 for all non-target species
 # 4*0, 4*0.2, 4*0.4, ... 4*4.0 for the target species. This brings calibration F back to FOFL, and then scales it

@@ -20,7 +20,7 @@ library(ncdf4)
 
 # identify which data we want to work on
 batch <- "fspb_beta_new"
-this_job <- "job20231103012611" # and which job to use for the single-species stuff
+this_job <- "job20231207060427" # and which job to use for the single-species stuff
 runs <- 1485:1495
 maxmult <- 4
 
@@ -223,7 +223,7 @@ ms_yield_long <- ms_yield_long %>%
   dplyr::select(-mult)
 
 
-# Bring in the single-species experiment (96 runs) ------------------------
+# Bring in the single-species experiment (108 runs) ------------------------
 
 # now create a similar object from the single-species f experiments
 
@@ -941,13 +941,14 @@ annotations <- b0 %>%
   left_join(yfun_terminal) %>%
   mutate(catch = ymax / 100 * yfrac / 1000,
          ssb = b0 / 100 * depletion / 1000) %>%
-  filter(experiment == "ms")
+  filter(experiment == "ss")
 
 # plot
 yield_func_plot <- yield_func %>%
-  filter(experiment == "ms") %>%
+  filter(experiment == "ss") %>%
   ggplot(aes(x = depletion, y = yfrac))+
   geom_line()+
+  geom_point()+
   scale_x_reverse()+
   geom_text(data = annotations,
             aes(x = 0.5, y = 0.5, hjust=0.5, vjust=1,
@@ -961,10 +962,10 @@ yield_func_plot <- yield_func %>%
             size = 3)+
   theme_bw()+
   labs(x = "Depletion", y = "Yield fraction")+
-  facet_wrap(~LongName)
+  facet_wrap(~LongName, nrow = 4)
 yield_func_plot
 
-ggsave(paste0("NOAA_Azure/results/figures/", batch, "/yield_functions.png"), yield_func_plot, width = 8, height = 5)
+ggsave(paste0("NOAA_Azure/results/figures/", batch, "/yield_functions_ss.png"), yield_func_plot, width = 7, height = 7)
 
 # The yield curves illustrate fundamental issues with either model productivity or my calculations here
 # Stocks are way depleted by the catch won't go down

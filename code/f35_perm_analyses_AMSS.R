@@ -50,9 +50,9 @@ f_lookup <- read.csv("NOAA_Azure/data/f_lookup_4.csv")
 f35_vector <- read.csv("NOAA_Azure/data/f35_vector_PROXY.csv")
 
 # list Tier 3 stocks 
-t3_fg <- f_lookup %>% pull(species) %>% unique()
+t3_fg <- f_lookup %>% pull(species) %>% unique() %>% sort()
 
-# get the multispecies files
+# get the results files from the multispecies runs
 f35_path <- paste0("NOAA_Azure/results/f35/",batch_res)
 # unpack RDS objects to extract biomage, catch, and mort tables
 f35_results <- list.files(f35_path, pattern = ".rds", full.names = T)
@@ -60,6 +60,15 @@ f35_results <- list.files(f35_path, pattern = ".rds", full.names = T)
 # reorder these based on the number in the filename
 num_idx <- as.numeric(gsub("([0-9]+)-result\\.rds", "\\1", list.files(f35_path, pattern = ".rds", full.names = F)))
 f35_results <- f35_results[order(num_idx)]
+
+# get the nc files
+f35_nc_path <- paste0("NOAA_Azure/results/f35/",batch_nc)
+# unpack RDS objects to extract biomage, catch, and mort tables
+f35_nc <- list.files(f35_nc_path, pattern = ".nc", full.names = T)
+# order them correctly
+# reorder these based on the number in the filename
+num_idx <- as.numeric(gsub("output_([0-9]+)\\.nc", "\\1", list.files(f35_nc_path, pattern = ".nc", full.names = F)))
+f35_nc <- f35_nc[order(num_idx)]
 
 # extract biomass and catch from the MS runs
 ms_yield_list <- list()
@@ -160,8 +169,9 @@ ms_yield_long <- df_mult <- ms_yield_df %>% # one of these is for later plots th
 # b0
 # For AMSS and OY climate scenarios:
 # What is B0 under different climate and ATF fishing regimes?
-# Intuitively, it would need to be standardized to the conditions at hand
-b0 <- ms_yield_long %>% filter(f == 0, type == "Biomass") %>% dplyr::select(LongName, run, mt) %>% rename(b0 = mt)
+# b0 <- ms_yield_long %>% filter(f == 0, type == "Biomass") %>% dplyr::select(LongName, run, mt) %>% rename(b0 = mt)
+# or leave it fixed to base conditions
+b0 <- ms_yield_long %>% filter(f == 0, type == "Biomass", run == "base") %>% dplyr::select(LongName, mt) %>% rename(b0 = mt)
 # b0_ss <- ss_yield_long %>% filter(f == 0, type == "Biomass") %>% dplyr::select(LongName, experiment, mt) %>% rename(b0 = mt)
 # b0 <- rbind(b0_ms, b0_ss)
 
@@ -197,7 +207,7 @@ yield_func <- ms_yield_long %>%
   #rbind(ss_yield_long) %>%
   dplyr::select(LongName, run, type, f, mt) %>%
   pivot_wider(id_cols = c(LongName, run, f), names_from = type, values_from = mt) %>%
-  left_join(b0, by = c("LongName", "run")) %>%
+  left_join(b0, by = c("LongName")) %>%
   mutate(depletion = Biomass / b0) %>%
   left_join(ymax, by = c("LongName", "run")) %>%
   mutate(yfrac = Catch / ymax) %>%
@@ -219,12 +229,21 @@ annotations <- b0 %>%
   mutate(catch = ymax / 100 * yfrac / 1000,
          ssb = b0 / 100 * depletion / 1000) 
 
+# prepare for visualization as Cool vs Warm and as ATF varying vs fixed
+yield_func <- yield_func %>%
+  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+
+# reorder ATF F
+yield_func$`F on\narrowtooth` <- factor(yield_func$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+
 # plot
 yield_func_plot <- yield_func %>%
-  #filter(LongName == "Walleye pollock") %>%
-  ggplot(aes(x = depletion, y = yfrac, color = run))+
+  filter(LongName %in% c("Walleye pollock", "Pacific cod", "Arrowtooth flounder", "Pacific halibut")) %>%
+  ggplot(aes(x = depletion, y = yfrac, color = Climate, linetype = `F on\narrowtooth`))+
   geom_point()+
   geom_line()+
+  scale_color_manual(values = c("blue3", "red3"))+
   scale_x_reverse()+
   # geom_text(data = annotations,
   #           aes(x = 0.5, y = 0.5, hjust=0.5, vjust=1,
@@ -241,8 +260,10 @@ yield_func_plot <- yield_func %>%
   facet_wrap(~LongName)
 yield_func_plot
 
+# not sure how to handle the changing reference points. Talk to Isaac and check Beth's work
+
 # lines are really close to one another
-# ggsave(paste0("NOAA_Azure/results/figures/", batch, "/yield_functions.png"), yield_func_plot, width = 8, height = 5)
+ggsave(paste0("NOAA_Azure/results/figures/amss/yield_functions.png"), yield_func_plot, width = 11, height = 6.5)
 
 
 # Biomass and catch curves ------------------------------------------------
@@ -337,6 +358,35 @@ f_plot3 <- to_plot %>%
 
 ggsave(paste0('NOAA_Azure/results/figures/amss/biomass_catch',t,'_MS_3.png'), f_plot3, width = 8, height = 6)
 
+# some tweaks for the poster
+to_plot_amss <- to_plot %>%
+  mutate(Climate = ifelse(Climate == "Cold (1999)", "Cool", "Warm"),
+         `F on\narrowtooth` = ifelse(`F on\narrowtooth`=="Fixed (1/4 FMSY)", "Fixed", "Varying"))
+ymax_amss <- ymax %>%
+  mutate(Climate = ifelse(Climate == "Cold (1999)", "Cool", "Warm"),
+         `F on\narrowtooth` = ifelse(`F on\narrowtooth`=="Fixed (1/4 FMSY)", "Fixed", "Varying"))
+
+to_plot_amss$`F on\narrowtooth` <- factor(to_plot_amss$`F on\narrowtooth`, levels = c("Varying", "Fixed"))
+
+f_plot_amss <- to_plot_amss %>%
+  filter(LongNamePlot %in% grp3) %>%
+  filter(type == "Catch") %>%
+  ggplot(aes(x = f, y = mt/1000, color = Climate, linetype = `F on\narrowtooth`))+
+  geom_line(linewidth = 1)+
+  geom_point(size = 1.6)+
+  scale_color_manual(values = c("green4", "hotpink"))+
+  geom_vline(data = ymax_amss %>% filter(LongNamePlot %in% grp3), aes(xintercept = f, color = Climate, linetype = `F on\narrowtooth`))+
+  # geom_vline(data = fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
+  # geom_vline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
+  # geom_hline(data = b35 %>% filter(LongNamePlot %in% grp1), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
+  theme_bw()+
+  scale_y_continuous(limits = c(0, NA))+
+  labs(x = 'Fishing mortality (F)', y = 'Catch (1000\'s of tons)')+
+  facet_wrap(~LongName, nrow = 4, scales = "free")+
+  theme(strip.text.y = element_text(angle=0))
+ggsave(paste0('NOAA_Azure/results/figures/amss/biomass_catch',t,'_MS_amss.png'), f_plot_amss, width = 5, height = 5.5, dpi = 600)
+
+
 # Diagnostics: top predators and forage fish ------------------------------
 
 top_preds <- grps %>% filter(GroupType %in% c("MAMMAL","BIRD","SHARK")) %>% pull(Code) %>% as.character()
@@ -425,9 +475,33 @@ other_plot_forage <- ms_other_df %>%
 ggsave(paste0("NOAA_Azure/results/figures/amss/other_top.png"), other_plot_top, width = 8, height = 6)
 ggsave(paste0("NOAA_Azure/results/figures/amss/other_forage.png"), other_plot_forage, width = 8, height = 4)
 
+# for amss
+ms_other_df_amss <- ms_other_df %>%
+  filter(Code %in% c("CAP","SAN","SSL","PIN")) %>%
+  mutate(Guild = ifelse(Code %in% c("SSL","PIN"), "Predator", "Forage"))
 
-# Numbers at age from nc files --------------------------------------------
+ms_other_df_amss$LongName <- factor(ms_other_df_amss$LongName, levels = c("Capelin", "Sandlance", "Steller sea lion", "Other pinnipeds"))
 
+# some tweaks for the poster
+ms_other_df_amss <- ms_other_df_amss %>%
+  mutate(Climate = ifelse(Climate == "Cold (1999)", "Cool", "Warm"),
+         `F on\narrowtooth` = ifelse(`F on\narrowtooth`=="Fixed (1/4 FMSY)", "Fixed", "Varying"))
+
+ms_other_df_amss$`F on\narrowtooth` <- factor(ms_other_df_amss$`F on\narrowtooth`, levels = c("Varying", "Fixed"))
+
+other_plot_amss <- ms_other_df_amss %>%
+  ggplot(aes(x = mult, y = biomchange, color = Climate, linetype = `F on\narrowtooth`))+
+  geom_line()+
+  geom_point()+
+  scale_color_manual(values = c("green4", "hotpink"))+
+  geom_hline(yintercept = 1, color = "black", linetype = "dotted")+
+  geom_vline(xintercept = 1, color = 'black', linetype = "dotted")+
+  theme_bw()+
+  labs(x = expression(F[MSY] ~ "multiplier"), y = "Change in biomass from unfished")+
+  facet_wrap(~LongName, nrow=2)
+other_plot_amss
+
+ggsave(paste0("NOAA_Azure/results/figures/amss/other_amss.png"), other_plot_amss, width = 5.5, height = 4)
 
 # Global yield ------------------------------------------------------------
 
@@ -492,19 +566,244 @@ global_yield_ms <- catch_df_long %>%
   ggplot(aes(x = mult, y = mt / 1000, fill = LongName))+
   geom_bar(stat = "identity", position = "stack")+
   scale_fill_viridis_d()+
-  scale_x_continuous(breaks = seq(0,maxmult,length.out=11))+
+  #scale_x_continuous(breaks = seq(0,maxmult,length.out=11))+
   scale_y_continuous(limits = c(0,1000))+
   geom_hline(yintercept = 116, color = "red", linetype = "dashed")+
   geom_hline(yintercept = 800, color = "red", linetype = "dashed")+
+  geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
   #geom_hline(yintercept = atlantis_oy / 1000, color = "blue", linetype = "dashed")+
   theme_bw()+
   labs(x = expression(F[MSY] ~ "multiplier"), y = "Catch (1000 mt)", fill = "Stock") +
   facet_grid(Climate~`F on\narrowtooth`)
 global_yield_ms
 
-ggsave(paste0("NOAA_Azure/results/figures/amss/global_yield_MS.png"), global_yield_ms, width = 10, height = 5)
+ggsave(paste0("NOAA_Azure/results/figures/amss/global_yield_nprb.png"), global_yield_ms, width = 6, height = 5)
+
+# for amss
+catch_df_long_amss <- catch_df_long %>%
+  mutate(Climate = ifelse(Climate == "Cold (1999)", "Cool climate regime", "Warm climate regime"),
+         `F on\narrowtooth` = ifelse(`F on\narrowtooth`=="Fixed (1/4 FMSY)", "Fixed (low) F\non arrowtooth", "Varying F\non arrowtooth"))
+
+catch_df_long_amss$`F on\narrowtooth` <- factor(catch_df_long_amss$`F on\narrowtooth`, 
+                                                levels = c("Varying F\non arrowtooth", "Fixed (low) F\non arrowtooth"))
+
+catch_df_long_amss$LongNamePlot <- gsub(" ", "\n", catch_df_long_amss$LongName)
+
+global_yield_amss <- catch_df_long_amss %>%
+  ggplot(aes(x = mult, y = mt / 1000, fill = LongNamePlot))+
+  geom_bar(stat = "identity", position = "stack")+
+  scale_fill_viridis_d()+
+  #scale_x_continuous(breaks = seq(0,maxmult,length.out=11))+
+  scale_y_continuous(limits = c(0,1000))+
+  # geom_hline(yintercept = 116, color = "red", linetype = "dashed")+
+  geom_hline(yintercept = 800, color = "red", linetype = "dashed")+
+  #geom_hline(yintercept = atlantis_oy / 1000, color = "blue", linetype = "dashed")+
+  theme_bw()+
+  labs(x = expression(F[MSY] ~ "multiplier"), y = "Catch (1000 mt)", fill = "Stock") +
+  facet_grid(Climate~`F on\narrowtooth`)
+global_yield_amss
+
+ggsave(paste0("NOAA_Azure/results/figures/amss/global_yield_amss.png"), global_yield_amss, width = 5.5, height = 4)
+
+# Numbers at age from nc files --------------------------------------------
+
+# expected to decline and be fairly close to 0 for older age classes when SSB is near 0
+# should that not be the case, there is an iddues with how we count biomass
+
+# function sum over depth layers in each array slice
+collapse_array <- function(mat){
+  mat2 <- apply(mat, 3, colSums)
+  mat3 <- data.frame(t(mat2))
+  colnames(mat3) <- 0:108
+  mat3
+}
+
+fl <- 'NOAA_Azure/data/GOA_WGS84_V4_final.bgm'
+bgm <- rbgm::read_bgm(fl)
+goa_sf <- rbgm::box_sf(bgm)
+boundary_boxes <- goa_sf %>% sf::st_set_geometry(NULL) %>% filter(boundary == TRUE) %>% pull(box_id) # get boundary boxes
+# function to set values in the boundary boxes to NA
+setNA <- function(mat) {
+  mat2 <- mat
+  if(length(dim(mat2))==3) mat2[,(boundary_boxes+1),]<-NA
+  if(length(dim(mat2))==2) mat2[(boundary_boxes+1),] <- NA
+  mat2
+}
+
+# get t3 names, make sure you maintain the same order as t3_fg
+t3_names <- grps %>% 
+  filter(Code %in% t3_fg) %>% 
+  mutate(Code = factor(Code, levels = t3_fg)) %>%
+  arrange(Code) %>%
+  pull(Name) #%>%
+  #sort()
+
+extract_naa <- function(ncfile){
+  
+  # get run number and corresponding multiplier for F35
+  this_idx <- as.numeric(gsub(".*output_", "", gsub(".nc","", ncfile)))
+  this_mult <- amss_key %>% filter(idx == this_idx) %>% pull(mult)
+  this_run <- amss_key %>% filter(idx == this_idx) %>% pull(run)
+  
+  this_ncfile <- tidync(ncfile)
+  this_ncdata <- nc_open(ncfile)
+  
+  ts <- ncdf4::ncvar_get(this_ncdata,varid = "t") %>% as.numeric
+  tyrs <- ts/(60*60*24*365)
+  
+  # do one fg at a time, then bring them back together
+  naa_frame <- data.frame()
+  for (i in 1:length(t3_names)){
+    
+    fg <- t3_names[i]
+    
+    # Get numbers by box
+    abun_vars <- hyper_vars(this_ncfile) %>% # all variables in the .nc file active grid
+      filter(grepl("_Nums",name)) %>% # filter for abundance variables
+      filter(grepl(fg,name)) # filter for specific functional group
+    
+    abun1 <- purrr::map(abun_vars$name,ncdf4::ncvar_get,nc=this_ncdata) %>% 
+      lapply(setNA) %>%
+      purrr::map(apply,MARGIN=3,FUN=sum,na.rm=T) %>% 
+      bind_cols() %>% 
+      suppressMessages() %>% 
+      set_names(abun_vars$name) %>% 
+      mutate(t=tyrs)
+    
+    abun2 <- abun1 %>%
+      pivot_longer(cols = -t,names_to = 'age_group',values_to = 'abun') %>%
+      mutate(age=parse_number(age_group)) %>%
+      mutate(year = ceiling(t)) %>%
+      group_by(year, age_group, age) %>%
+      summarise(abun = mean(abun)) %>%
+      ungroup() %>%
+      mutate(Name = t3_names[i]) %>%
+      dplyr::select(year, Name, age, abun)
+    
+    # get end of the time series (last 5 years average)
+    abun3 <- abun2 %>%
+      slice_max(year, n = 5) %>%
+      group_by(Name, age) %>%
+      summarize(abun = mean(abun)) %>%
+      ungroup()
+    
+    naa_frame <- rbind(naa_frame, abun3)
+    
+  }
+  
+  # add multiplier for the run
+  naa_frame <- naa_frame %>%
+    mutate(mult = this_mult,
+           run = this_run)
+  
+  return(naa_frame)
+  
+}
+
+# apply function to the nc files
+naa <- bind_rows(lapply(f35_nc, extract_naa)) # this is slow with 44 files
+
+# bring in long names
+naa <- naa %>%
+  left_join(grps %>% select(Name, LongName), by = "Name")
+
+# spaces
+naa$LongNamePlot <- gsub(" ", "\n", naa$LongName)
+
+# add scenario information
+naa <- naa %>%
+  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+
+# reorder ATF F
+naa$`F on\narrowtooth` <- factor(naa$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+
+# add column for age as factor
+naa$`Age class` <- factor(naa$age)
+
+# plot
+grp1 <- unique(naa$LongNamePlot)[1:6]
+naa_plot1 <- naa %>%
+  filter(LongNamePlot %in% grp1) %>%
+  ggplot(aes(x = mult, y = abun/1000000, color = `Age class`, linetype = `F on\narrowtooth`))+
+  geom_line()+
+  geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
+  scale_color_viridis_d()+
+  theme_bw()+
+  labs(x = expression(F[MSY] ~ "multiplier"), y = 'Individuals (millions)')+
+  facet_grid2(LongNamePlot~Climate, scales = 'free')+
+  theme(strip.text.y = element_text(angle=0))
+naa_plot1
+
+grp2 <- unique(naa$LongNamePlot)[7:12]
+naa_plot2 <- naa %>%
+  filter(LongNamePlot %in% grp2) %>%
+  ggplot(aes(x = mult, y = abun/1000000, color = `Age class`, linetype = `F on\narrowtooth`))+
+  geom_line()+
+  geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
+  scale_color_viridis_d()+
+  theme_bw()+
+  labs(x = expression(F[MSY] ~ "multiplier"), y = 'Individuals (millions)')+
+  facet_grid2(LongNamePlot~Climate, scales = 'free')+
+  theme(strip.text.y = element_text(angle=0))
+naa_plot2
+
+# make a figure
+ggsave(paste0('NOAA_Azure/results/figures/amss/naa',t,'_1.png'), naa_plot1, width = 7, height = 7)
+ggsave(paste0('NOAA_Azure/results/figures/amss/naa',t,'_2.png'), naa_plot2, width = 7, height = 7)
 
 
+grp3 <- c("Walleye\npollock", "Pacific\ncod", "Pacific\nhalibut")
+naa_plot3 <- naa %>%
+  filter(LongNamePlot %in% grp3) %>%
+  ggplot(aes(x = mult, y = abun/1000000, color = `Age class`, linetype = `F on\narrowtooth`))+
+  geom_line()+
+  geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
+  scale_color_viridis_d()+
+  theme_bw()+
+  labs(x = expression(F[MSY] ~ "multiplier"), y = 'Individuals (millions)')+
+  facet_grid2(LongNamePlot~Climate, scales = 'free')+
+  theme(strip.text.y = element_text(angle=0))
+naa_plot3
+
+ggsave(paste0("NOAA_Azure/results/figures/amss/NAA.png"), naa_plot, width = 8, height = 5)
+
+
+# Overfished --------------------------------------------------------------
+
+# How many stocks are below 35% B0 for each scenario?
+# Use static B0 from Base Scenario for this
+overfished <- ms_yield_long %>%
+  filter(type == "Biomass") %>%
+  filter(!(run %in% c("atf", "atf_climate") & LongName == "Arrowtooth flounder")) %>%
+  left_join(b0, by = "LongName") %>%
+  mutate(depletion = mt / b0) %>%
+  mutate(overfished = ifelse(depletion < 0.35, 1, 0)) %>%
+  group_by(run, mult) %>%
+  mutate(n_overfished = sum(overfished)) %>%
+  mutate(prop_overfished = n_overfished / length(unique(LongName))) %>%
+  ungroup() %>%
+  select(run, mult, prop_overfished) %>%
+  distinct()
+
+# add scenario information
+overfished <- overfished %>%
+  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+
+# reorder ATF F
+overfished$`F on\narrowtooth` <- factor(overfished$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+
+p_overfished <- overfished %>%
+  ggplot(aes(x = mult, y = prop_overfished*100))+
+  geom_col()+
+  theme_bw()+
+  geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
+  labs(x = expression(F[MSY] ~ "multiplier"), y = "SSB < 35% (%)") +
+  facet_grid(Climate~`F on\narrowtooth`)
+p_overfished
+
+ggsave(paste0("NOAA_Azure/results/figures/amss/overfished_nprb.png"), p_overfished, width = 5, height = 4)
 
 
 

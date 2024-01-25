@@ -11,9 +11,11 @@ library(dplyr)
 library(tidyr)
 library(here)
 
-this_job <- "job20231228020254"
+this_job <- "job20240109052342"
 outdir <- paste0('NOAA_Azure/results/post-processing/',this_job)
 dir.create(outdir)
+
+burnin <- 30 # years of burn-in
 
 folder_path <- here("NOAA_Azure","results","pre-processing",this_job,"results")
 # list the results files
@@ -99,7 +101,7 @@ for(i in 1:length(results_list)){
   # For runs with a burn-in, this has to be the biomass at the end of the burn-in, when we start fishing with the new scalar
   # # get initial biomass for the selected age classes
   biom_age_t1 <- biomage %>% 
-    filter(Time == 365 * 30) %>%# this is the burn-in years
+    filter(Time == 365 * burnin) %>%# this is the burn-in years
     pivot_longer(-Time, names_to = 'Code.Age', values_to = 'biomass') %>%
     separate_wider_delim(Code.Age, delim = '.', names = c('Code', 'Age')) %>%
     left_join(selex, by = 'Code') %>%
@@ -113,7 +115,7 @@ for(i in 1:length(results_list)){
   # # catch (one time step after biomass: how much did we catch in this time?)
   catch_t1 <- catch %>% 
     select(Time, all_of(sp)) %>% 
-    filter(Time == 365) %>%
+    filter(Time == 365 * (burnin + 1)) %>% # careful - there is a small transition phase
     summarise(across(everything(), ~ mean(.x, na.rm = TRUE))) %>%
     pivot_longer(-Time, names_to = 'Code', values_to = 'catch') %>%
     select(-Time)
@@ -134,4 +136,3 @@ for(i in 1:length(results_list)){
   write.csv(f_frame, paste(outdir,paste(sp,fidx,'f.csv',sep='_'), sep = "/"), row.names = F)
   
 }
-

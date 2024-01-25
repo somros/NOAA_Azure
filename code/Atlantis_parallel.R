@@ -145,7 +145,7 @@ atlantis.scenarios <- foreach(idx=runidx, .options.azure=opts, .errorhandling = 
   #
   # run Atlantis scenario
   system(paste("cd AtlantisGOA_OY_SS/; flip -uv *; sh ", this_sh, sep=""), wait = TRUE)
-  
+
   # get the files we need
   outFolder <- paste("AtlantisGOA_OY_SS/output",sep="_")
   biomage_filename <- list.files(path = outFolder, pattern = 'AgeBiomIndx.txt')[1]
