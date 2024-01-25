@@ -1,0 +1,20 @@
+{
+    "name": "AtlantisGOAPool_OY_MS",
+    "vmSize": "Standard_D2_v2",
+    "maxTasksPerNode": 2,
+    "poolSize": {
+      "dedicatedNodes": {
+        "min": 2,
+        "max": 26
+      },
+      "lowPriorityNodes": {
+        "min": 0,
+        "max": 0
+      },
+      "autoscaleFormula": "QUEUE_AND_RUNNING"
+  },
+  "rPackages": {
+    "cran": [],
+    "github": []
+  }
+}
