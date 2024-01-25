@@ -153,7 +153,7 @@ for (idx in f_lookup$idx) {
   fileConn<-file(filenm,open="w")
   cat(paste0("atlantisMerged -i GOA_cb_summer.nc  0 -o output_", 
              idx,
-             ".nc -r GOA_run.prm -f GOA_force_base.prm -p GOA_physics.prm -b GOAbioparam_test.prm -h GOA_harvest_",
+             ".nc -r GOA_run.prm -f GOA_force_base.prm -p GOA_physics.prm -b GOAbioparam_test_OY_SS.prm -h GOA_harvest_",
              idx,
              ".prm -m GOAMigrations.csv -s GOA_Groups.csv -q GOA_fisheries.csv -d output\n"),file = fileConn,append=T)
   close(fileConn)

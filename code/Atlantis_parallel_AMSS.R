@@ -57,7 +57,7 @@ system("sudo apt-get update; sudo apt-get upgrade -y", wait = TRUE)
 setCredentials("NOAA_Azure/keys/credentials.json")
 
 # Register the pool. This will create a new pool if your pool hasn't already been provisioned.
-cluster <- doAzureParallel::makeCluster("NOAA_Azure/cluster_OY_SS.json")#, resourceFiles = resource_files)
+cluster <- doAzureParallel::makeCluster("NOAA_Azure/cluster.json")#, resourceFiles = resource_files)
 # check the status of your cluster (it seems to hang on the provisioning in the R console sometimes)
 getClusterList(filter = NULL)
 
@@ -68,9 +68,9 @@ registerDoAzureParallel(cluster)
 getDoParWorkers()
 
 # read in lookup table for the indices
-f_lookup <- read.csv(here('NOAA_Azure','data','f_lookup_OY_SS.csv'), header = TRUE)
-runidx <- f_lookup$idx # as many runs as you want to do, would be 96 for us
-#runidx <- 1:4 #for debugging
+# f_lookup <- read.csv(here('NOAA_Azure','data','f_lookup_OY_SS.csv'), header = TRUE)
+# runidx <- f_lookup$idx # as many runs as you want to do, would be 96 for us
+runidx <- 1:44 # 11 f's 4 scenarios
 
 if("package:doSNOW" %in% search()) detach("package:doSNOW", unload=TRUE) 
 if("package:future" %in% search()) detach("package:future", unload=TRUE) 
@@ -128,10 +128,10 @@ atlantis.scenarios <- foreach(idx=runidx, .options.azure=opts, .errorhandling = 
   system("cd for_pw/trunk/atlantis; aclocal; autoheader; autoconf; automake -a; ./configure; sudo make CFLAGS='-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H -Wno-misleading-indentation -Wno-format -Wno-implicit-fallthrough'; sudo make -d install", wait = TRUE)
   
   # now clone the F test folder from GitHub
-  system("git clone https://github.com/somros/AtlantisGOA_OY_SS.git")
+  system("git clone https://github.com/somros/AtlantisGOA_AMSS.git")
   
   # # List of R packages for session
-  .packages = c("data.table","dplyr","tidyr","stringr","R.utils","magrittr","here")
+  .packages = c("data.table","dplyr","tidyr","stringr","R.utils","magrittr","here","ncdf4","AzureStor")
   
   # Install CRAN packages (if not already installed)
   .inst <- .packages %in% installed.packages()
@@ -144,14 +144,26 @@ atlantis.scenarios <- foreach(idx=runidx, .options.azure=opts, .errorhandling = 
   this_sh <- paste('RunAtlantis_',idx,".sh",sep="") # this is the sh for this run
   #
   # run Atlantis scenario
-  system(paste("cd AtlantisGOA_OY_SS/; flip -uv *; sh ", this_sh, sep=""), wait = TRUE)
+  system(paste("cd AtlantisGOA_AMSS/; flip -uv *; sh ", this_sh, sep=""), wait = TRUE)
   
   # get the files we need
-  outFolder <- paste("AtlantisGOA_OY_SS/output",sep="_")
-  biomage_filename <- list.files(path = outFolder, pattern = 'AgeBiomIndx.txt')[1]
+  outFolder <- paste("AtlantisGOA_AMSS/output",sep="_")
   
+  # copy nc file directly to a dedicated blob container
+  # nc file
+  nc_path <- file.path(outFolder, paste0('output_',idx,'.nc'), fsep = '/')
+  storage_account <- storage_endpoint("", 
+                                      key="")
+  
+  container <- storage_container(storage_account, "amss")
+  storage_upload(container, src = nc_path, dest = paste0("output_", idx, ".nc"))
+  
+  # biomage
+  biomage_filename <- list.files(path = outFolder, pattern = 'AgeBiomIndx.txt')[1]
   biomage_path <- file.path(outFolder, biomage_filename, fsep = "/") # biomass by age
+  # catch
   catch_path <- file.path(outFolder, paste0('output_',idx,'Catch.txt'), fsep = '/')
+  # mort
   mort_path <- file.path(outFolder, paste0('output_',idx,'Mort.txt'), fsep = '/')
   
   # read files
