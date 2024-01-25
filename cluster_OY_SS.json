@@ -1,5 +1,5 @@
 {
-    "name": "AtlantisGOAPool",
+    "name": "AtlantisGOAPool_OY_SS",
     "vmSize": "Standard_D2_v2",
     "maxTasksPerNode": 2,
     "poolSize": {

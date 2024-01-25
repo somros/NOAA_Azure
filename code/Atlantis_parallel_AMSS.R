@@ -21,7 +21,7 @@ Sys.setlocale("LC_CTYPE", "en_US.UTF-8")
 # install my version of the doAzureParallel package
 devtools::install_github("Azure/rAzureBatch")
 devtools::install_github("somros/doAzureParallel")
-                         
+
 # List of packages for session
 # these are the packages that the Controller needs
 .packages = c("devtools", "dtplyr","stringi","data.table","tidyverse","stringr","R.utils",
@@ -95,7 +95,7 @@ atlantis.scenarios <- foreach(idx=runidx, .options.azure=opts, .errorhandling = 
   # # system("sudo apt-get -y install autoconf automake build-essential libcurl4 libcurl4-openssl-dev curl gdal-bin libgdal-dev libgeos++-dev libgeos-dev flip libcairo2 libcairo2-dev libapparmor1 libhdf5-dev libnetcdf-dev libxml2-dev libproj-dev libssl-dev libv4l-0 libgeotiff5 libglu1-mesa-dev libpoppler-cpp-dev libprotobuf-dev librsvg2-dev libx11-dev lsscsi openjdk-8-jdk python2.7 python3-pip python3-dev proj-bin proj-data protobuf-compiler openssl rpm mesa-common-dev netcdf-bin ntp ntpdate subversion valgrind cdo nco m4 dos2unix gawk gfortran libfribidi-dev libharfbuzz-dev libudunits2-dev libv8-dev gnupg-agent software-properties-common dirmngr --no-install-recommends", wait = TRUE)
   # Hem's original
   system("sudo apt-get install -y subversion build-essential flip autoconf libnetcdf-dev libxml2-dev gawk", wait = TRUE)
-   
+
   #use this to install Proj4 which is required for Atlantis
   #https://gist.github.com/robinkraft/2a8ee4dd7e9ee9126030
   #http://grasswiki.osgeo.org/wiki/Compile_and_Install_Ubuntu#PROJ4
@@ -132,11 +132,11 @@ atlantis.scenarios <- foreach(idx=runidx, .options.azure=opts, .errorhandling = 
   
   # # List of R packages for session
   .packages = c("data.table","dplyr","tidyr","stringr","R.utils","magrittr","here","ncdf4","AzureStor")
-
+  
   # Install CRAN packages (if not already installed)
   .inst <- .packages %in% installed.packages()
   if(length(.packages[!.inst]) > 0) install.packages(.packages[!.inst], repos="https://cloud.r-project.org/")
-
+  
   # Load packages into session
   lapply(.packages, require, character.only=TRUE)
   
