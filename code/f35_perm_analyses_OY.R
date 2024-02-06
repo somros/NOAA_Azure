@@ -26,8 +26,7 @@ burnin <- 30 # years of burn-in
 # identify which data we want to work on
 batch_res <- "job20240129042511/results" # ms_oy - these are the biomage, catch, and mort files
 batch_nc <- "job20240129042511/oy-ms" # these are the full out.nc files
-this_job <- "job20240109052342" # this is SS runs - skip for now but need it for NPRB report
-# runs <- 1485:1495
+this_job <- "job20240109052342" # this is SS runs
 maxmult <- 4
 
 # set the clock to date plots
@@ -246,7 +245,7 @@ annotations <- b0 %>%
 # prepare for visualization as Cool vs Warm and as ATF varying vs fixed
 yield_func <- yield_func %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
 yield_func$`F on\narrowtooth` <- factor(yield_func$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -303,10 +302,10 @@ ymax$type <- "Catch"
 # prepare for visualization as Cool vs Warm and as ATF varying vs fixed
 to_plot <- to_plot %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 ymax <- ymax %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
 to_plot$`F on\narrowtooth` <- factor(to_plot$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -427,7 +426,7 @@ ms_other_df <- ms_other_df %>%
 # add factors for plot
 ms_other_df <- ms_other_df %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
 ms_other_df$`F on\narrowtooth` <- factor(ms_other_df$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -580,7 +579,7 @@ catch_df_long <- catch_df %>%
 # add scenario information
 catch_df_long <- catch_df_long %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
 catch_df_long$`F on\narrowtooth` <- factor(catch_df_long$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -725,7 +724,7 @@ naa$LongNamePlot <- gsub(" ", "\n", naa$LongName)
 # add scenario information
 naa <- naa %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
 naa$`F on\narrowtooth` <- factor(naa$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -877,7 +876,7 @@ waa$LongNamePlot <- gsub(" ", "\n", waa$LongName)
 # add scenario information
 waa <- waa %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
 waa$`F on\narrowtooth` <- factor(waa$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -936,7 +935,7 @@ overfished <- ms_yield_long %>%
 # add scenario information
 overfished <- overfished %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "Warm (2014)", "Cold (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
 overfished$`F on\narrowtooth` <- factor(overfished$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -951,29 +950,6 @@ p_overfished <- overfished %>%
 p_overfished
 
 # ggsave(paste0("NOAA_Azure/results/figures/oy/overfished_nprb.png"), p_overfished, width = 5, height = 4)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
