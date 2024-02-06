@@ -222,7 +222,7 @@ key_ms <- data.frame("run" = c(rep("base",length(mult)),
                      "idx" = 1:(4*length(mult)))
 
 # save
-# write.table(key_ms, "NOAA_Azure/data/oy_key.csv", row.names = F)
+write.csv(key_ms, "NOAA_Azure/data/oy_key.csv", row.names = F)
 
 # now make the RunAtlantis.sh scripts pointing to the correct path and creating the correct output
 for (i in key_ms$idx) {
