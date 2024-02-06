@@ -221,6 +221,9 @@ key_ms <- data.frame("run" = c(rep("base",length(mult)),
                      "force" = c(rep("GOA_force_base.prm", 26), rep("GOA_force_warm.prm", 26)),
                      "idx" = 1:(4*length(mult)))
 
+# save
+# write.table(key_ms, "NOAA_Azure/data/oy_key.csv", row.names = F)
+
 # now make the RunAtlantis.sh scripts pointing to the correct path and creating the correct output
 for (i in key_ms$idx) {
   

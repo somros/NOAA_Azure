@@ -22,8 +22,8 @@ library(ncdf4)
 # Set up env and read data ------------------------------------------------
 
 # identify which data we want to work on
-batch_res <- "job20240106053541/results" # ms_amss - these are the biomage, catch, and mort files
-batch_nc <- "job20240106053541/amss" # these are the full out.nc files
+batch_res <- "job20240129042511/results" # ms_oy - these are the biomage, catch, and mort files
+batch_nc <- "job20240129042511/oy-ms" # these are the full out.nc files
 # this_job <- "job20231103012611" # this is SS runs - skip for now but need it for NPRB report
 # runs <- 1485:1495
 maxmult <- 4
