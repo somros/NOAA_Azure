@@ -1,7 +1,7 @@
 # check when the scalar on plankton is getting applied - plot full biomass series
 # closest to base but with climate would be idx = 2 or 3, probably
 
-res_30 <- readRDS("NOAA_Azure/results/f35/job20240129042511/results/30-result.rds")
+res_30 <- readRDS("NOAA_Azure/results/f35/job20240210013612/results/30-result.rds")
 
 biom <- res_30$`30`$biomage_30
 catch <- res_30$`30`$catch_30

@@ -24,10 +24,15 @@ library(ncdf4)
 burnin <- 30 # years of burn-in
 
 # identify which data we want to work on
-batch_res <- "job20240129042511/results" # ms_oy - these are the biomage, catch, and mort files
-batch_nc <- "job20240129042511/oy-ms" # these are the full out.nc files
-this_job <- "job20240109052342" # this is SS runs
-maxmult <- 4
+# there are a variety of paths here because many runs failed in the batch job and were (after much trying and tribulation) done manually on the fast eScience machines
+batch_res1 <- "job20240210013612/results" # ms_oy - these are the biomage, catch, and mort files
+batch_res2 <- "job20240210013612-part2/results" # ms_oy - these are the biomage, catch, and mort files
+
+batch_nc1 <- "job20240210013612/oy-ms-3" # these are the full out.nc files
+batch_nc2 <- "job20240210013612-part2/oy-ms-3-part2" # these are the full out.nc files
+
+ss_job <- "job20240109052342" # this is SS runs
+maxmult <- 4 # this is the full range of explored F
 
 # set the clock to date plots
 t <- format(Sys.time(),'%Y-%m-%d %H-%M-%S')
@@ -54,41 +59,56 @@ f35_vector <- read.csv("NOAA_Azure/data/f35_vector_PROXY.csv")
 t3_fg <- f_lookup %>% pull(species) %>% unique() %>% sort()
 
 # get the results files from the multispecies runs
-f35_path <- paste0("NOAA_Azure/results/f35/",batch_res)
-# unpack RDS objects to extract biomage, catch, and mort tables
-f35_results <- list.files(f35_path, pattern = ".rds", full.names = T)
+f35_path1 <- paste0("NOAA_Azure/results/f35/",batch_res1)
+f35_path2 <- paste0("NOAA_Azure/results/f35/",batch_res2)
+# list the rds files
+f35_results <- c(list.files(f35_path1, pattern = ".rds", full.names = T),
+                 list.files(f35_path2, pattern = ".rds", full.names = T))
+
 # order them correctly
 # reorder these based on the number in the filename
-num_idx <- as.numeric(gsub("([0-9]+)-result\\.rds", "\\1", list.files(f35_path, pattern = ".rds", full.names = F)))
+num_idx <- as.numeric(gsub("([0-9]+)-result\\.rds", "\\1", 
+                           c(list.files(f35_path1, pattern = ".rds", full.names = F), 
+                             list.files(f35_path2, pattern = ".rds", full.names = F))))
 f35_results <- f35_results[order(num_idx)]
 
 # get the nc files
-f35_nc_path <- paste0("NOAA_Azure/results/f35/",batch_nc)
-# unpack RDS objects to extract biomage, catch, and mort tables
-f35_nc <- list.files(f35_nc_path, pattern = ".nc", full.names = T)
+f35_nc_path1 <- paste0("NOAA_Azure/results/f35/",batch_nc1)
+f35_nc_path2 <- paste0("NOAA_Azure/results/f35/",batch_nc2)
+# list the nc files
+f35_nc <- c(list.files(f35_nc_path1, pattern = ".nc", full.names = T),
+            list.files(f35_nc_path2, pattern = ".nc", full.names = T))
 # order them correctly
 # reorder these based on the number in the filename
-num_idx <- as.numeric(gsub("output_([0-9]+)\\.nc", "\\1", list.files(f35_nc_path, pattern = ".nc", full.names = F)))
+num_idx <- as.numeric(gsub("output_([0-9]+)\\.nc", "\\1", 
+                           c(list.files(f35_nc_path1, pattern = ".nc", full.names = F),
+                             list.files(f35_nc_path2, pattern = ".nc", full.names = F))))
 f35_nc <- f35_nc[order(num_idx)]
 
 # extract biomass and catch from the MS runs
 ms_yield_list <- list()
 
-for(i in 1:nrow(oy_key)){
+for(i in 1:length(f35_results)){
   
-  # this_catch_file <- f35_catch_files[i]
-  this_run <- oy_key %>% filter(idx == i) %>% pull(run)
-  this_mult <- oy_key %>% filter(idx == i) %>% pull(mult)
+  print(paste("Doing", f35_results[i]))
+  
+  # grab the index from the file name
+  this_idx <- as.numeric(gsub("-result.rds", "", gsub("NOAA.*2/results/", "", f35_results[i])))
+  
+  # run information based on the index
+  this_run <- oy_key %>% filter(idx == this_idx) %>% pull(run)
+  this_mult <- oy_key %>% filter(idx == this_idx) %>% pull(mult)
   
   # extract tables from results
   this_result <- readRDS(f35_results[i])
-  if(length(this_result[[1]]) < 4){
-    next
+  # the packaging of the RDS object was different between the eScience runs and the batch (doAzureParallel) runs
+  if(length(this_result)==1) {
+    this_result <- this_result[[1]]
   }
   
-  biomage <- this_result[[1]][[2]]
-  catch <- this_result[[1]][[3]]
-  mort <- this_result[[1]][[4]]
+  biomage <- this_result[[2]]
+  catch <- this_result[[3]]
+  mort <- this_result[[4]]
   
   # now extract data
   # SSB to plot and report in tables
@@ -172,9 +192,9 @@ ms_yield_long <- df_mult <- ms_yield_df %>% # one of these is for later plots th
 # b0
 # For AMSS and OY climate scenarios:
 # What is B0 under different climate and ATF fishing regimes?
-# b0 <- ms_yield_long %>% filter(f == 0, type == "Biomass") %>% dplyr::select(LongName, run, mt) %>% rename(b0 = mt)
+b0 <- ms_yield_long %>% filter(mult == 0, type == "Biomass") %>% dplyr::select(LongName, run, mt) %>% rename(b0 = mt)
 # or leave it fixed to base conditions
-b0 <- ms_yield_long %>% filter(f == 0, type == "Biomass", run == "base") %>% dplyr::select(LongName, mt) %>% rename(b0 = mt)
+# b0 <- ms_yield_long %>% filter(mult == 0, type == "Biomass", run == "base") %>% dplyr::select(LongName, mt) %>% rename(b0 = mt)
 # b0_ss <- ss_yield_long %>% filter(f == 0, type == "Biomass") %>% dplyr::select(LongName, experiment, mt) %>% rename(b0 = mt)
 # b0 <- rbind(b0_ms, b0_ss)
 
@@ -214,18 +234,27 @@ ms_yield_long$f[is.nan(ms_yield_long$f)] <- NA
 
 
 # Plot yield functions ----------------------------------------------------
+# These are unclear to me when thinking of the different scenarios - what is b0?
+# Seems like there is no sure answer (see work from Cody)
+# Using b0 from the base run means that depletion of, for instance, Pcod would be really low at the lowest F as well
+# but using b0 from the respective climate scenario seems equally problematic for other reasons, one being it will hide obvious depletion 
+# the information we may get from such a case is how the shape of the curve changes: under different scenarios, how does fishing intensity affect the stock and its yield?
+# If the curves from relative reference points are identical, F affects the stock in the smame way across scenarios
+# If the curve changes (i.e. the peak is in a different position), the maximum yield is attained at different exploitation rates in different scenarios
+
 # we are plotting yield fraction against depletion
 yield_func <- ms_yield_long %>%
   drop_na() %>%
   #rbind(ss_yield_long) %>%
   dplyr::select(LongName, run, type, f, mt) %>%
   pivot_wider(id_cols = c(LongName, run, f), names_from = type, values_from = mt) %>%
-  left_join(b0, by = c("LongName")) %>%
+  # left_join(b0, by = c("LongName")) %>% # if you are keep static reference point
+  left_join(b0, by = c("LongName", "run")) %>%
   mutate(depletion = Biomass / b0) %>%
-  left_join(ymax, by = c("LongName", "run")) %>%
+  left_join(ymax %>% select(-f), by = c("LongName", "run")) %>%
   mutate(yfrac = Catch / ymax) %>%
   #mutate(experiment = ifelse(experiment == "ms", "Multispecies", "Single-species")) %>%
-  dplyr::select(LongName, run, yfrac, depletion)
+  dplyr::select(LongName, run, yfrac, depletion, f)
 
 # prepare data frames to write the following quantities on the plot:
 # final depletion, final yield fraction, biomass corresponding to final depletion, biomass corresponding to final yield fraction
@@ -252,7 +281,7 @@ yield_func$`F on\narrowtooth` <- factor(yield_func$`F on\narrowtooth`, levels = 
 
 # plot
 yield_func_plot <- yield_func %>%
-  filter(LongName %in% c("Walleye pollock", "Pacific cod", "Arrowtooth flounder", "Pacific halibut")) %>%
+  #filter(LongName %in% c("Walleye pollock", "Pacific cod", "Arrowtooth flounder", "Pacific halibut")) %>%
   ggplot(aes(x = depletion, y = yfrac, color = Climate, linetype = `F on\narrowtooth`))+
   geom_point()+
   geom_line()+
@@ -273,9 +302,7 @@ yield_func_plot <- yield_func %>%
   facet_wrap(~LongName)
 yield_func_plot
 
-# not sure how to handle the changing reference points. Talk to Isaac and check Beth's work
-
-# lines are really close to one another
+# is there a way to make this plot useful?
 # ggsave(paste0("NOAA_Azure/results/figures/oy/yield_functions.png"), yield_func_plot, width = 11, height = 6.5)
 
 
@@ -300,27 +327,49 @@ ymax$type <- "Catch"
 # to_plot$Scenario <- factor(to_plot$Scenario, levels = c("Base", "Warm", "Fixed ATF", "Fixed ATF + Warm"))
 
 # prepare for visualization as Cool vs Warm and as ATF varying vs fixed
+# to_plot <- to_plot %>%
+#   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 to_plot <- to_plot %>%
-  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+  mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
+                                     "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks",
+                                     "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+
+# ymax <- ymax %>%
+#   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 ymax <- ymax %>%
-  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+  mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
+                          "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks",
+                          "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
-to_plot$`F on\narrowtooth` <- factor(to_plot$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
-ymax$`F on\narrowtooth` <- factor(ymax$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+# to_plot$`F on\narrowtooth` <- factor(to_plot$`F on\narrowtooth`,
+#                           levels = c("Varying",
+#                                      "Fixed (1/4 FMSY)"))
+# ymax$`F on\narrowtooth` <- factor(ymax$`F on\narrowtooth`,
+#                                   levels = c("Varying",
+#                                              "Fixed (1/4 FMSY)"))
+to_plot$Fishing <- factor(to_plot$Fishing,
+                          levels = c("MFMSY varying for all stocks",
+                                     "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+ymax$Fishing <- factor(ymax$Fishing,
+                          levels = c("MFMSY varying for all stocks",
+                                     "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # make figures for slides (break into two columns)
 # plot
 grp1 <- unique(to_plot$LongNamePlot)[1:6]
 f_plot1 <- to_plot %>%
   filter(LongNamePlot %in% grp1) %>%
-  ggplot(aes(x = f, y = mt/1000, color = Climate, linetype = `F on\narrowtooth`))+
+  ggplot(aes(x = f, y = mt/1000, color = Climate, linetype = Fishing))+
   geom_line(linewidth = 1)+
   #geom_point(size = 1.6)+
-  scale_color_manual(values = c("blue3", "red3"))+
-  geom_vline(data = ymax %>% filter(LongNamePlot %in% grp1), aes(xintercept = f, color = Climate, linetype = `F on\narrowtooth`))+
+  #scale_color_manual(values = c("blue3", "red3"))+
+  scale_color_viridis_d(begin = 0.2, end = 0.8)+
+  geom_vline(data = ymax %>% filter(LongNamePlot %in% grp1), aes(xintercept = f, color = Climate, linetype = Fishing))+
   # geom_vline(data = fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
   # geom_vline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
   # geom_hline(data = b35 %>% filter(LongNamePlot %in% grp1), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
@@ -333,11 +382,12 @@ f_plot1 <- to_plot %>%
 grp2 <- unique(to_plot$LongNamePlot)[7:12]
 f_plot2 <- to_plot %>%
   filter(LongNamePlot %in% grp2) %>%
-  ggplot(aes(x = f, y = mt/1000, color = Climate, linetype = `F on\narrowtooth`))+
+  ggplot(aes(x = f, y = mt/1000, color = Climate, linetype = Fishing))+
   geom_line(linewidth = 1)+
   #geom_point(size = 1.6)+
-  scale_color_manual(values = c("blue3", "red3"))+
-  geom_vline(data = ymax %>% filter(LongNamePlot %in% grp2), aes(xintercept = f, color = Climate, linetype = `F on\narrowtooth`))+
+  #scale_color_manual(values = c("blue3", "red3"))+
+  scale_color_viridis_d(begin = 0.2, end = 0.8)+
+  geom_vline(data = ymax %>% filter(LongNamePlot %in% grp2), aes(xintercept = f, color = Climate, linetype = Fishing))+
   # geom_vline(data = fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
   # geom_vline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
   # geom_hline(data = b35 %>% filter(LongNamePlot %in% grp1), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
@@ -348,18 +398,21 @@ f_plot2 <- to_plot %>%
   theme(strip.text.y = element_text(angle=0))
 
 # make a figure
-# ggsave(paste0('NOAA_Azure/results/figures/oy/biomass_catch',t,'_MS_1.png'), f_plot1, width = 7, height = 7)
-# ggsave(paste0('NOAA_Azure/results/figures/oy/biomass_catch',t,'_MS_2.png'), f_plot2, width = 7, height = 7)
+ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/biomass_catch',t,'_MS_1.png'), f_plot1, width = 7.5, height = 7)
+ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/biomass_catch',t,'_MS_2.png'), f_plot2, width = 7.5, height = 7)
 
 # look at a couple of key species only
-grp3 <- c("Arrowtooth\nflounder", "Walleye\npollock", "Pacific\ncod", "Pacific\nhalibut")
+grp3 <- c("Arrowtooth\nflounder", "Walleye\npollock", "Pacific\ncod", "Sablefish")
 f_plot3 <- to_plot %>%
-  filter(LongNamePlot %in% grp3) %>%
-  ggplot(aes(x = f, y = mt/1000, color = Climate, linetype = `F on\narrowtooth`))+
+  filter(LongNamePlot %in% grp3, type == "Catch") %>%
+  ggplot(aes(x = f, y = mt/1000, color = Climate, linetype = Fishing))+
   geom_line(linewidth = 1)+
-  geom_point(size = 1.6)+
-  scale_color_manual(values = c("blue3", "red3"))+
-  geom_vline(data = ymax %>% filter(LongNamePlot %in% grp3), aes(xintercept = f, color = Climate, linetype = `F on\narrowtooth`))+
+  # geom_point(size = 1.6)+
+  scale_color_viridis_d(begin = 0.2, end = 0.8)+
+  geom_vline(data = ymax %>% 
+               filter(LongNamePlot %in% grp3) %>% 
+               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks")), 
+             aes(xintercept = f, color = Climate, linetype = Fishing))+
   # geom_vline(data = fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
   # geom_vline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
   # geom_hline(data = b35 %>% filter(LongNamePlot %in% grp1), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
@@ -369,7 +422,7 @@ f_plot3 <- to_plot %>%
   facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
   theme(strip.text.y = element_text(angle=0))
 
-# ggsave(paste0('NOAA_Azure/results/figures/oy/biomass_catch',t,'_MS_3.png'), f_plot3, width = 8, height = 6)
+ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_MS_3.png'), f_plot3, width = 6, height = 4)
 
 # Diagnostics: top predators and forage fish ------------------------------
 
@@ -379,19 +432,25 @@ other_fg <- c(top_preds, forage)
 
 ms_other_list <- list()
 
-for(i in 1:nrow(oy_key)){
+for(i in 1:length(f35_results)){
   
-  # this_catch_file <- f35_catch_files[i]
-  this_run <- oy_key %>% filter(idx == i) %>% pull(run)
-  this_mult <- oy_key %>% filter(idx == i) %>% pull(mult)
+  print(paste("Doing", f35_results[i]))
+  
+  # grab the index from the file name
+  this_idx <- as.numeric(gsub("-result.rds", "", gsub("NOAA.*2/results/", "", f35_results[i])))
+  
+  # run information based on the index
+  this_run <- oy_key %>% filter(idx == this_idx) %>% pull(run)
+  this_mult <- oy_key %>% filter(idx == this_idx) %>% pull(mult)
   
   # extract tables from results
   this_result <- readRDS(f35_results[i])
-  if(length(this_result[[1]]) < 4){
-    next
+  # the packaging of the RDS object was different between the eScience runs and the batch (doAzureParallel) runs
+  if(length(this_result)==1) {
+    this_result <- this_result[[1]]
   }
   
-  biomage <- this_result[[1]][[2]]
+  biomage <- this_result[[2]]
   
   # now extract data
   # SSB to plot and report in tables
@@ -424,20 +483,32 @@ ms_other_df <- ms_other_df %>%
   mutate(biomchange = biomass_mt / b0)
 
 # add factors for plot
+# ms_other_df <- ms_other_df %>%
+#   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+# 
+# # reorder ATF F
+# ms_other_df$`F on\narrowtooth` <- factor(ms_other_df$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+
 ms_other_df <- ms_other_df %>%
-  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+  mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
+                          "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks",
+                          "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
-ms_other_df$`F on\narrowtooth` <- factor(ms_other_df$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+ms_other_df$Fishing <- factor(ms_other_df$Fishing,
+                          levels = c("MFMSY varying for all stocks",
+                                     "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # plot (separate top preds and forage)
 other_plot_top <- ms_other_df %>%
   filter(Code %in% c("KWT","KWR","DOL","SSL","PIN","BDF","BDI","BSF","BSI")) %>%
-  ggplot(aes(x = mult, y = biomchange, color = Climate, linetype = `F on\narrowtooth`))+
+  ggplot(aes(x = mult, y = biomchange, color = Climate, linetype = Fishing))+
   geom_line()+
   geom_point()+
-  scale_color_manual(values = c("blue3", "red3"))+
+  #scale_color_manual(values = c("blue3", "red3"))+
+  scale_color_viridis_d(begin = 0.2, end = 0.8)+
   geom_hline(yintercept = 1, color = "grey", linetype = "dotted", linewidth = 1)+
   geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
   theme_bw()+
@@ -446,18 +517,19 @@ other_plot_top <- ms_other_df %>%
 
 other_plot_forage <- ms_other_df %>%
   filter(Code %in% c("CAP","SAN","EUL","HER")) %>%
-  ggplot(aes(x = mult, y = biomchange, color = Climate, linetype = `F on\narrowtooth`))+
+  ggplot(aes(x = mult, y = biomchange, color = Climate, linetype = Fishing))+
   geom_line()+
   geom_point()+
-  scale_color_manual(values = c("blue3", "red3"))+
+  #scale_color_manual(values = c("blue3", "red3"))+
+  scale_color_viridis_d(begin = 0.2, end = 0.8)+
   geom_hline(yintercept = 1, color = "grey", linetype = "dotted", linewidth = 1)+
   geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
   theme_bw()+
   labs(x = expression(MF[MSY] ~ "multiplier"), y = "Change in biomass from unfished")+
   facet_wrap(~LongName)
 
-# ggsave(paste0("NOAA_Azure/results/figures/oy/other_top.png"), other_plot_top, width = 8, height = 6)
-# ggsave(paste0("NOAA_Azure/results/figures/oy/other_forage.png"), other_plot_forage, width = 8, height = 4)
+ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/other_top.png"), other_plot_top, width = 8, height = 6)
+ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/other_forage.png"), other_plot_forage, width = 8, height = 4)
 
 
 # Global yield ------------------------------------------------------------
@@ -465,7 +537,7 @@ other_plot_forage <- ms_other_df %>%
 # First, get the global yield from single-species runs (156)
 
 # list all csv files we need to read
-f_files <- list.files(paste0("NOAA_Azure/results/post-processing/",this_job), full.names = T)
+f_files <- list.files(paste0("NOAA_Azure/results/post-processing/",ss_job), full.names = T)
 
 # create empty list to fill with data frame for the yield curve
 f_df_ls <- list()
@@ -497,6 +569,7 @@ f_df <- bind_rows(f_df_ls)
 
 ss_yield_long <- ss_yield_long_fidx <- f_df %>%
   mutate(experiment = "ss") %>%
+  filter(LongName != "Pacific halibut") %>% # drop halibut as it is not relevant to OY
   select(Code, LongName, f, fidx, experiment, type, mt)
 
 # calcuate the Atlantis internal OY
@@ -514,7 +587,7 @@ atlantis_oy <- ss_yield_long_fidx %>%
 # discount by 8%
 atlantis_oy <- atlantis_oy - (atlantis_oy * 0.08)
 
-# the result is 650553.2 mt, much lower than 800,000
+# the result is 597469.1 mt, much lower than 800,000
 # This means that MSY calculated in Atlantis are lower than MSY from the assessments in 1987
 # This is fine. It means that stocks are not as productive in Atlantis
 # A caveat is that F on the nontarget species is at 1/4 FMSY, so this OY accounts for other stocks at a very specific state
@@ -522,38 +595,47 @@ atlantis_oy <- atlantis_oy - (atlantis_oy * 0.08)
 # So, the different result is not surprising
 # More importantly, we should put this into the context of the multispecies MFSMY runs
 
+ss_yield_long_fidx$LongNamePlot <- gsub(" - ", "\n", ss_yield_long_fidx$LongName)
+
 global_yield_ss <- ss_yield_long_fidx %>%
   filter(type == "Catch") %>%
   left_join(f_lookup, by = c("Code"="species","fidx"="mult_idx")) %>%
-  ggplot(aes(x = fofl_mult, y = mt / 1000, fill = LongName))+
+  ggplot(aes(x = fofl_mult, y = mt / 1000, fill = LongNamePlot))+
   geom_bar(stat = "identity", position = "stack")+
   scale_fill_viridis_d()+
   scale_x_continuous(breaks = seq(0,maxmult,length.out=11))+
-  scale_y_continuous(limits = c(0,1100))+
-  geom_hline(yintercept = 116, color = "red", linetype = "dashed")+
+  scale_y_continuous(limits = c(0,900))+
+  #geom_hline(yintercept = 116, color = "red", linetype = "dashed")+
   geom_hline(yintercept = 800, color = "red", linetype = "dashed")+
   geom_hline(yintercept = atlantis_oy / 1000, color = "blue", linetype = "dashed")+
   theme_bw()+
-  labs(x = "FOFL (SS) multiplier", y = "Catch (1000 mt)", fill = "Stock")
+  labs(x = "FMSY (from FMP) multiplier", y = "Catch (1000 mt)", fill = "Stock")
 global_yield_ss
 
+ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/global_yield_wfc_ss.png"), global_yield_ss, width = 6, height = 4)
 
 # now for the multispecies runs
 # list
 catch_list <- list()
-for(i in 1:nrow(oy_key)){
+for(i in 1:length(f35_results)){
   
-  # this_catch_file <- f35_catch_files[i]
-  this_run <- oy_key %>% filter(idx == i) %>% pull(run)
-  this_mult <- oy_key %>% filter(idx == i) %>% pull(mult)
+  print(paste("Doing", f35_results[i]))
+  
+  # grab the index from the file name
+  this_idx <- as.numeric(gsub("-result.rds", "", gsub("NOAA.*2/results/", "", f35_results[i])))
+  
+  # run information based on the index
+  this_run <- oy_key %>% filter(idx == this_idx) %>% pull(run)
+  this_mult <- oy_key %>% filter(idx == this_idx) %>% pull(mult)
   
   # extract tables from results
   this_result <- readRDS(f35_results[i])
-  if(length(this_result[[1]]) < 4){
-    next
+  # the packaging of the RDS object was different between the eScience runs and the batch (doAzureParallel) runs
+  if(length(this_result)==1) {
+    this_result <- this_result[[1]]
   }
   
-  this_catch <- this_result[[1]][[3]]
+  this_catch <- this_result[[3]]
   this_catch <- this_catch %>%
     slice_tail(n = 5) %>%
     summarise(across(all_of(t3_fg), ~mean(.x, na.rm = T))) %>%
@@ -577,27 +659,59 @@ catch_df_long <- catch_df %>%
   left_join(grps %>% select(Code, LongName), by = "Code")
 
 # add scenario information
+# pretty verbose for WFC now
 catch_df_long <- catch_df_long %>%
-  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), 
+                                     "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks", 
+                                     "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
-catch_df_long$`F on\narrowtooth` <- factor(catch_df_long$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+catch_df_long$`F on\narrowtooth` <- factor(catch_df_long$`F on\narrowtooth`, 
+                                           levels = c("MFMSY varying for all stocks",
+                                                      "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+
+# spaces
+catch_df_long$LongNamePlot <- gsub(" - ", "\n", catch_df_long$LongName)
 
 global_yield_ms <- catch_df_long %>%
-  ggplot(aes(x = mult, y = mt / 1000, fill = LongName))+
+  filter(run %in% c("base", "climate")) %>%
+  ggplot(aes(x = mult, y = mt / 1000, fill = LongNamePlot))+
   geom_bar(stat = "identity", position = "stack")+
   scale_fill_viridis_d()+
   #scale_x_continuous(breaks = seq(0,maxmult,length.out=11))+
   scale_y_continuous(limits = c(0,1000))+
-  geom_hline(yintercept = 116, color = "red", linetype = "dashed")+
+  # geom_hline(yintercept = 116, color = "red", linetype = "dashed")+
   geom_hline(yintercept = 800, color = "red", linetype = "dashed")+
-  geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
-  geom_hline(yintercept = atlantis_oy / 1000, color = "blue", linetype = "dashed")+
+  # geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
+  # geom_hline(yintercept = atlantis_oy / 1000, color = "blue", linetype = "dashed")+
   theme_bw()+
   labs(x = expression(MF[MSY] ~ "multiplier"), y = "Catch (1000 mt)", fill = "Stock") +
-  facet_grid(Climate~`F on\narrowtooth`)
+  theme(legend.position="bottom",
+        legend.spacing.x = unit(0.1, 'cm'))+
+  guides(fill = guide_legend(nrow = 4))+
+  facet_grid(~Climate)
 global_yield_ms
+
+ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/global_yield_wfc_Isaac.png"), global_yield_ms, width = 6.1, height = 7)
+
+# make a similar plot but with catch against F as areas or the likes
+# global_yield_ms_area <- to_plot %>%
+#   filter(type == "Catch") %>%
+#   ggplot(aes(x = f, y = mt / 1000, fill = LongName))+
+#   geom_area(stat = "align", position = "stack")+
+#   scale_fill_viridis_d()+
+#   #scale_x_continuous(breaks = seq(0,maxmult,length.out=11))+
+#   scale_y_continuous(limits = c(0,1000))+
+#   geom_hline(yintercept = 116, color = "red", linetype = "dashed")+
+#   geom_hline(yintercept = 800, color = "red", linetype = "dashed")+
+#   geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
+#   # geom_hline(yintercept = atlantis_oy / 1000, color = "blue", linetype = "dashed")+
+#   theme_bw()+
+#   labs(x = expression(MF[MSY] ~ "multiplier"), y = "Catch (1000 mt)", fill = "Stock") +
+#   facet_grid(Climate~`F on\narrowtooth`)
+# global_yield_ms_area
+# this shows the abrupt end of the range we are testing
 
 # this is fairly interesting I think:
 # varying F, cold: we get past the Atlantis OY when fishing multispecies
@@ -607,7 +721,7 @@ global_yield_ms
 # Take home: under projected warming and low pressure on predators, we are way below Atlantis OY
 # Part of the reason is stocks tanking under warming (cod), part is predation (pollock)
 
-# ggsave(paste0("NOAA_Azure/results/figures/oy/global_yield_nprb.png"), global_yield_ms, width = 6, height = 5)
+ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/global_yield_wfc_blank.png"), global_yield_ms, width = 8, height = 4)
 
 # make a table with max catch per scenario for the report
 max_catch <- catch_df_long %>%
@@ -615,6 +729,67 @@ max_catch <- catch_df_long %>%
   distinct() %>%
   group_by(run) %>%
   slice_max(total_yield)
+
+# Single-species vs multispecies fishing ----------------------------------
+ms_vs_ss <- ss_yield_long %>%
+  mutate(run = "ss") %>%
+  select(LongName, run, f, type, mt) %>%
+  rbind(ms_yield_long %>% select(LongName, run, f, type, mt)) %>%
+  filter(run %in% c("base", "atf", "ss"))
+
+# change long names for plots
+ms_vs_ss$LongNamePlot <- gsub(" ", "\n", ms_vs_ss$LongName)
+
+# clarify labels
+ms_vs_ss <- ms_vs_ss %>%
+  mutate(Fishing = ifelse(run == "base", "MS - varying for all", ifelse(run == "ss", "SS", "MS - fixed for ATF")))
+
+# reorder factors for legend
+ms_vs_ss$Fishing <- factor(ms_vs_ss$Fishing, levels = c("SS", "MS - varying for all", "MS - fixed for ATF"))
+
+# make some vertical lines for FMSY
+ymax_comp <- ms_vs_ss %>%
+  filter(type == "Catch") %>%
+  group_by(run, LongNamePlot) %>%
+  slice_max(mt)
+
+# view
+ms_vs_ss_plot_1 <- ms_vs_ss %>%
+  filter(LongNamePlot %in% grp1, type == "Catch") %>%
+  ggplot(aes(x = f, y = mt/1000, color = Fishing))+
+  geom_line(linewidth = 1)+
+  geom_vline(data = ymax_comp %>% 
+               filter(LongNamePlot %in% grp1) %>% 
+               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "MS - fixed for ATF")), 
+             aes(xintercept = f, color =  Fishing))+
+  #scale_color_manual(values = c("blue3", "red3", "orange"))+
+  scale_color_viridis_d(begin = 0.1, end = 0.9)+
+  theme_bw()+
+  scale_y_continuous(limits = c(0, NA))+
+  labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
+  facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
+  theme(strip.text.y = element_text(angle=0))
+
+ms_vs_ss_plot_2 <- ms_vs_ss %>%
+  filter(LongNamePlot %in% grp2, type == "Catch") %>%
+  ggplot(aes(x = f, y = mt/1000, color = Fishing))+
+  geom_line(linewidth = 1)+
+  geom_vline(data = ymax_comp %>% 
+               filter(LongNamePlot %in% grp2) %>% 
+               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "MS - fixed for ATF")), 
+             aes(xintercept = f, color =  Fishing))+
+  #scale_color_manual(values = c("blue3", "red3", "orange"))+
+  scale_color_viridis_d(begin = 0.1, end = 0.9)+
+  theme_bw()+
+  scale_y_continuous(limits = c(0, NA))+
+  labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
+  facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
+  theme(strip.text.y = element_text(angle=0))
+
+# make a figure
+ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_comp_1.png'), ms_vs_ss_plot_1, width = 5.5, height = 7)
+ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_comp_2.png'), ms_vs_ss_plot_2, width = 5.5, height = 7)
+
 
 # Numbers at age from nc files --------------------------------------------
 
@@ -712,7 +887,7 @@ extract_naa <- function(ncfile){
 }
 
 # apply function to the nc files
-naa <- bind_rows(lapply(f35_nc, extract_naa)) # this is slow with 44 files
+naa <- bind_rows(lapply(f35_nc, extract_naa)) # this is slow with 40
 
 # bring in long names
 naa <- naa %>%
@@ -915,41 +1090,41 @@ waa_plot2
 # ggsave(paste0('NOAA_Azure/results/figures/oy/waa',t,'_1.png'), waa_plot1, width = 7, height = 7)
 # ggsave(paste0('NOAA_Azure/results/figures/oy/waa',t,'_2.png'), waa_plot2, width = 7, height = 7)
 
-# Overfished --------------------------------------------------------------
+# Below the target of 35% --------------------------------------------------------------
 
 # How many stocks are below 35% B0 for each scenario?
-# Use static B0 from Base Scenario for this
-overfished <- ms_yield_long %>%
+# Use static B0 from Base Scenario for this (but why?)
+below_target <- ms_yield_long %>%
   filter(type == "Biomass") %>%
   filter(!(run %in% c("atf", "atf_climate") & LongName == "Arrowtooth flounder")) %>%
   left_join(b0, by = "LongName") %>%
   mutate(depletion = mt / b0) %>%
-  mutate(overfished = ifelse(depletion < 0.35, 1, 0)) %>%
+  mutate(below_target = ifelse(depletion < 0.35, 1, 0)) %>%
   group_by(run, mult) %>%
-  mutate(n_overfished = sum(overfished)) %>%
-  mutate(prop_overfished = n_overfished / length(unique(LongName))) %>%
+  mutate(n_below_target = sum(below_target)) %>%
+  mutate(prop_below_target = n_below_target / length(unique(LongName))) %>%
   ungroup() %>%
-  select(run, mult, prop_overfished) %>%
+  select(run, mult, prop_below_target) %>%
   distinct()
 
 # add scenario information
-overfished <- overfished %>%
+below_target <- below_target %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
 # reorder ATF F
-overfished$`F on\narrowtooth` <- factor(overfished$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+below_target$`F on\narrowtooth` <- factor(below_target$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
 
-p_overfished <- overfished %>%
-  ggplot(aes(x = mult, y = prop_overfished*100))+
+p_below_target <- below_target %>%
+  ggplot(aes(x = mult, y = prop_below_target*100))+
   geom_col()+
   theme_bw()+
   geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
   labs(x = expression(MF[MSY] ~ "multiplier"), y = "SSB < B35% (%)") +
   facet_grid(Climate~`F on\narrowtooth`)
-p_overfished
+p_below_target
 
-# ggsave(paste0("NOAA_Azure/results/figures/oy/overfished_nprb.png"), p_overfished, width = 5, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy/below_target_nprb.png"), p_below_target, width = 5, height = 4)
 
 
 

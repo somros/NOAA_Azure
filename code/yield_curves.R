@@ -216,3 +216,19 @@ f_plot2 <- f_df_nprb %>%
 t <- format(Sys.time(),'%Y-%m-%d %H-%M-%S')
 ggsave(paste0('NOAA_Azure/results/figures/yield_curves',t,'_OY_1.png'), f_plot1, width = 7, height = 7)
 ggsave(paste0('NOAA_Azure/results/figures/yield_curves',t,'_OY_2.png'), f_plot2, width = 7, height = 7)
+
+# # make a figure for the WFC talk
+# p_pol <- f_df_nprb %>%
+#   filter(LongName == "Walleye pollock", type == "Catch") %>%
+#   ggplot(aes(x = f, y = mt/1000))+
+#   geom_line()+
+#   geom_point(size = 2)+
+#   geom_vline(data = atlantis_fmsy %>% filter(LongName == "Walleye pollock"), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
+#   theme_bw()+
+#   scale_y_continuous(limits = c(0, NA))+
+#   labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
+#   facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
+#   theme(strip.text.y = element_text(angle=0))
+# ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/POL_OY.png'), p_pol, width = 4, height = 2)
+
+  
