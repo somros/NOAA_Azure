@@ -254,7 +254,7 @@ annotations <- b0 %>%
 # prepare for visualization as Cool vs Warm and as ATF varying vs fixed
 yield_func <- yield_func %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 yield_func$`F on\narrowtooth` <- factor(yield_func$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -305,21 +305,21 @@ ymax$type <- "Catch"
 # prepare for visualization as Cool vs Warm and as ATF varying vs fixed
 # to_plot <- to_plot %>%
 #   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 to_plot <- to_plot %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
                                      "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks",
                                      "MFMSY varying for all stocks"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # ymax <- ymax %>%
 #   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 ymax <- ymax %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
                           "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks",
                           "MFMSY varying for all stocks"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 # to_plot$`F on\narrowtooth` <- factor(to_plot$`F on\narrowtooth`,
@@ -373,25 +373,26 @@ ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biomass_catch',t,'_MS_2.png')
 
 # look at a couple of key species only
 # for plots
-grp3 <- c("Arrowtooth\nflounder", "Walleye\npollock", "Pacific\ncod", "Sablefish")
-f_plot3 <- to_plot %>%
-  filter(LongNamePlot %in% grp3, type == "Catch") %>%
+key_grps <- grps %>% filter(Code %in% c("POL", "COD", "ATF", "HAL", "SBF", "POP", "FFS")) %>% pull(LongName)
+f_plot_ms <- to_plot %>%
+  filter(LongName %in% key_grps, type == "Catch") %>%
   ggplot(aes(x = f, y = mt/1000, color = Climate, linetype = Fishing))+
   geom_line(linewidth = 1)+
   # geom_point(size = 1.6)+
   scale_color_viridis_d(begin = 0.2, end = 0.8)+
   geom_vline(data = ymax %>% 
-               filter(LongNamePlot %in% grp3) %>% 
+               filter(LongName %in% key_grps) %>% 
                filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks")), 
              aes(xintercept = f, color = Climate, linetype = Fishing))+
   theme_bw()+
   scale_y_continuous(limits = c(0, NA))+
-  labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
+  labs(x = 'Fishing mortality (F)', y = 'Catch (1000 mt)')+
   facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
+  #facet_wrap(~ LongName, scales = "free", ncol = 1)+
   theme(strip.text.y = element_text(angle=0))
-f_plot3
+f_plot_ms
 
-# ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_MS_3.png'), f_plot3, width = 6, height = 4)
+ggsave(paste0('NOAA_Azure/results/figures/oy_paper/catch',t,'_MS_ms.png'), f_plot_ms, width = 6, height = 6)
 
 # Diagnostics: top predators and forage fish ------------------------------
 
@@ -455,7 +456,7 @@ ms_other_df <- ms_other_df %>%
 # add factors for plot
 # ms_other_df <- ms_other_df %>%
 #   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 # 
 # # reorder ATF F
 # ms_other_df$`F on\narrowtooth` <- factor(ms_other_df$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -464,7 +465,7 @@ ms_other_df <- ms_other_df %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
                           "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks",
                           "MFMSY varying for all stocks"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 ms_other_df$Fishing <- factor(ms_other_df$Fishing,
@@ -579,10 +580,10 @@ global_yield_ss <- ss_yield_long_fidx %>%
   geom_hline(yintercept = 800, color = "red", linetype = "dashed")+
   geom_hline(yintercept = atlantis_oy / 1000, color = "blue", linetype = "dashed")+
   theme_bw()+
-  labs(x = "FMSY (from FMP) multiplier", y = "Catch (1000 mt)", fill = "Stock")
+  labs(x = expression("F"[OFL]~" (from single-species assessment) multiplier"), y = "Catch (1000 mt)", fill = "Stock")
 global_yield_ss
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/global_yield_wfc_ss.png"), global_yield_ss, width = 6, height = 4)
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ss.png"), global_yield_ss, width = 6, height = 4)
 
 # now for the multispecies runs
 # list
@@ -632,25 +633,25 @@ catch_df_long <- catch_df %>%
 # pretty verbose for WFC now
 catch_df_long <- catch_df_long %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), 
-                                     "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks", 
+                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks", 
                                      "MFMSY varying for all stocks"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 catch_df_long$`F on\narrowtooth` <- factor(catch_df_long$`F on\narrowtooth`, 
                                            levels = c("MFMSY varying for all stocks",
-                                                      "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                                      "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # spaces
 catch_df_long$LongNamePlot <- gsub(" - ", "\n", catch_df_long$LongName)
 
 global_yield_ms <- catch_df_long %>%
-  filter(run %in% c("base", "climate")) %>%
+  #filter(run %in% c("base", "climate")) %>%
   ggplot(aes(x = mult, y = mt / 1000, fill = LongNamePlot))+
   geom_bar(stat = "identity", position = "stack")+
   scale_fill_viridis_d()+
   #scale_x_continuous(breaks = seq(0,maxmult,length.out=11))+
-  scale_y_continuous(limits = c(0,1000))+
+  scale_y_continuous(limits = c(0,900))+
   # geom_hline(yintercept = 116, color = "red", linetype = "dashed")+
   geom_hline(yintercept = 800, color = "red", linetype = "dashed")+
   # geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
@@ -660,10 +661,13 @@ global_yield_ms <- catch_df_long %>%
   theme(legend.position="bottom",
         legend.spacing.x = unit(0.1, 'cm'))+
   guides(fill = guide_legend(nrow = 4))+
-  facet_grid(~Climate)
+  facet_grid(Climate~`F on\narrowtooth`)
 global_yield_ms
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/global_yield_wfc_Isaac.png"), global_yield_ms, width = 6.1, height = 7)
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms.png"), global_yield_ms, width = 6.1, height = 7)
+
+# test <- catch_df_long %>% filter(run == "base")
+# test %>% group_by(mult) %>% summarize(mt = sum(mt))
 
 # make a similar plot but with catch against F as areas or the likes
 # global_yield_ms_area <- to_plot %>%
@@ -679,7 +683,7 @@ ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/global_yield_wfc_Isaac.png"), g
 #   # geom_hline(yintercept = atlantis_oy / 1000, color = "blue", linetype = "dashed")+
 #   theme_bw()+
 #   labs(x = expression(MF[MSY] ~ "multiplier"), y = "Catch (1000 mt)", fill = "Stock") +
-#   facet_grid(Climate~`F on\narrowtooth`)
+#   facet_grid(Climate~Fishing)
 # global_yield_ms_area
 # this shows the abrupt end of the range we are testing
 
@@ -691,7 +695,7 @@ ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/global_yield_wfc_Isaac.png"), g
 # Take home: under projected warming and low pressure on predators, we are way below Atlantis OY
 # Part of the reason is stocks tanking under warming (cod), part is predation (pollock)
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/global_yield_wfc_blank.png"), global_yield_ms, width = 8, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/global_yield_wfc_blank.png"), global_yield_ms, width = 8, height = 4)
 
 # make a table with max catch per scenario for the report
 max_catch <- catch_df_long %>%
@@ -869,7 +873,7 @@ naa$LongNamePlot <- gsub(" ", "\n", naa$LongName)
 # add scenario information
 naa <- naa %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 naa$`F on\narrowtooth` <- factor(naa$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -1021,7 +1025,7 @@ waa$LongNamePlot <- gsub(" ", "\n", waa$LongName)
 # add scenario information
 waa <- waa %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 waa$`F on\narrowtooth` <- factor(waa$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
@@ -1080,7 +1084,7 @@ below_target <- ms_yield_long %>%
 # add scenario information
 below_target <- below_target %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
-         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
+         Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 below_target$`F on\narrowtooth` <- factor(below_target$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
