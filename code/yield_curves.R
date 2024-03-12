@@ -238,3 +238,98 @@ p_ms <- f_df_ms %>%
   theme(strip.text.y = element_text(angle=0))
 ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biom_catch_key_stocks.png'), p_ms, width = 7, height = 7)
 
+
+# Yield functions ---------------------------------------------------------
+ss_yield_long <- f_df %>%
+  select(Code, LongName, f, fidx, type, mt)
+
+# get b0
+b0 <- ss_yield_long %>% 
+  group_by(Code) %>%
+  slice_min(f) %>% 
+  ungroup() %>%
+  filter(type == "Biomass") %>% 
+  dplyr::select(LongName, mt) %>% 
+  rename(b0 = mt)
+
+# get max yield
+ymax <- ss_yield_long %>% 
+  filter(type == "Catch") %>% 
+  group_by(LongName) %>%
+  slice_max(mt) %>%
+  ungroup() %>%
+  dplyr::select(LongName, mt, f) %>% 
+  rename(ymax = mt) 
+
+# we are plotting yield fraction against depletion
+yield_func <- ss_yield_long %>%
+  drop_na() %>%
+  dplyr::select(LongName, type, f, mt) %>%
+  pivot_wider(id_cols = c(LongName, f), names_from = type, values_from = mt) %>%
+  left_join(b0, by = c("LongName")) %>% # if you are keep static reference point
+  mutate(depletion = Biomass / b0) %>%
+  left_join(ymax %>% select(-f), by = c("LongName")) %>%
+  mutate(yfrac = Catch / ymax) %>%
+  #mutate(experiment = ifelse(experiment == "ms", "Multispecies", "Single-species")) %>%
+  dplyr::select(LongName, yfrac, depletion, f)
+
+# prepare data frames to write the following quantities on the plot:
+# final depletion, final yield fraction, biomass corresponding to final depletion, biomass corresponding to final yield fraction
+yfun_terminal <- yield_func %>%
+  group_by(LongName) %>%
+  slice_max(f) %>% # for each group, get highest f
+  ungroup() %>%
+  mutate(depletion = depletion * 100,
+         yfrac = yfrac * 100) # turn depletion and yield to percentages for easier interpretation
+
+annotations <- b0 %>%
+  left_join(ymax, by = "LongName") %>%
+  left_join(yfun_terminal, by = "LongName") %>%
+  mutate(catch = ymax / 100 * yfrac / 1000,
+         ssb = b0 / 100 * depletion / 1000) 
+
+# plot
+yield_func_plot <- yield_func %>%
+  #filter(LongName %in% c("Walleye pollock", "Pacific cod", "Arrowtooth flounder", "Pacific halibut")) %>%
+  ggplot(aes(x = depletion, y = yfrac))+
+  geom_point()+
+  geom_line()+
+  scale_x_reverse()+
+  geom_text(data = annotations,
+            aes(x = 0.5, y = 0.5, hjust=0.5, vjust=1,
+                label=paste0('Depletion(%)=', round(depletion,2),
+                             '\n',
+                             'Yield fraction(%)=', round(yfrac, 2),
+                             '\n',
+                             'SSB(1000mt)=', round(ssb, 2),
+                             '\n',
+                             'Catch(1000mt)=', round(catch, 2))),
+            size = 3)+
+  theme_bw()+
+  labs(x = "Depletion", y = "Yield fraction")+
+  facet_wrap(~LongName)
+yield_func_plot
+
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/yield_functions_ss.png"), yield_func_plot, width = 8, height = 6.5)
+
+# only for key groups
+# y_p_ms <- yield_func %>%
+#   filter(LongName %in% key_grps) %>%
+#   ggplot(aes(x = depletion, y = yfrac))+
+#   geom_point()+
+#   geom_line()+
+#   scale_x_reverse()+
+#   geom_text(data = annotations %>% filter(LongName %in% key_grps),
+#             aes(x = 0.5, y = 0.5, hjust=0.5, vjust=1,
+#                 label=paste0('Depletion(%)=', round(depletion,2),
+#                              '\n',
+#                              'Yield fraction(%)=', round(yfrac, 2),
+#                              '\n',
+#                              'SSB(1000mt)=', round(ssb, 2),
+#                              '\n',
+#                              'Catch(1000mt)=', round(catch, 2))),
+#             size = 3)+
+#   theme_bw()+
+#   labs(x = "Depletion", y = "Yield fraction")+
+#   facet_wrap(~LongName)
+# y_p_ms
