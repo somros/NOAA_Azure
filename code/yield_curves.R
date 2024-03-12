@@ -162,27 +162,27 @@ f_plot
 
 # make a figure
 t <- format(Sys.time(),'%Y-%m-%d %H-%M-%S')
-ggsave(paste0('NOAA_Azure/results/figures/yield_curves',t,'.png'), f_plot, width = 7, height = 9)
+ggsave(paste0('NOAA_Azure/results/figures/oy_paper/yield_curves',t,'.png'), f_plot, width = 7, height = 9)
 
-# make figures for NPRB report
+# make figures for OY paper
 # plot
-f_df_nprb <- f_df
+f_df_ms <- f_df
 
-f_df_nprb$LongNamePlot <- gsub(" ", "\n", f_df_nprb$LongName)
+f_df_ms$LongNamePlot <- gsub(" ", "\n", f_df_ms$LongName)
 fmsy$LongNamePlot <- gsub(" ", "\n", fmsy$LongName)
 atlantis_fmsy$LongNamePlot <- gsub(" ", "\n", atlantis_fmsy$LongName)
 b35$LongNamePlot <- gsub(" ", "\n", b35$LongName)
 annotations$LongNamePlot <- gsub(" ", "\n", annotations$LongName)
 
-grp1 <- unique(f_df_nprb$LongNamePlot)[1:6]
-f_plot1 <- f_df_nprb %>%
+grp1 <- unique(f_df_ms$LongNamePlot)[1:6]
+f_plot1 <- f_df_ms %>%
   filter(LongNamePlot %in% grp1) %>%
   ggplot(aes(x = f, y = mt/1000))+
   geom_line()+
   geom_point(size = 2)+
   geom_vline(data = fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
   geom_vline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
-  geom_hline(data = b35 %>% filter(LongNamePlot %in% grp1), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
+  #geom_hline(data = b35 %>% filter(LongNamePlot %in% grp1), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
   geom_hline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp1) %>% mutate(type = 'Biomass'),
              aes(yintercept = b_fmsy/1000, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
   geom_text(data = annotations %>% filter(LongNamePlot %in% grp1) %>% mutate(type = 'Biomass'),
@@ -193,15 +193,15 @@ f_plot1 <- f_df_nprb %>%
   facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
   theme(strip.text.y = element_text(angle=0))
 
-grp2 <- unique(f_df_nprb$LongNamePlot)[7:12]
-f_plot2 <- f_df_nprb %>%
+grp2 <- unique(f_df_ms$LongNamePlot)[7:12]
+f_plot2 <- f_df_ms %>%
   filter(LongNamePlot %in% grp2) %>%
   ggplot(aes(x = f, y = mt/1000))+
   geom_line()+
   geom_point(size = 2)+
   geom_vline(data = fmsy %>% filter(LongNamePlot %in% grp2), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
   geom_vline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp2), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
-  geom_hline(data = b35 %>% filter(LongNamePlot %in% grp2), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
+  #geom_hline(data = b35 %>% filter(LongNamePlot %in% grp2), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
   geom_hline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp2) %>% mutate(type = 'Biomass'),
              aes(yintercept = b_fmsy/1000, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
   geom_text(data = annotations %>% filter(LongNamePlot %in% grp2) %>% mutate(type = 'Biomass'),
@@ -213,22 +213,28 @@ f_plot2 <- f_df_nprb %>%
   theme(strip.text.y = element_text(angle=0))
 
 # make a figure
-t <- format(Sys.time(),'%Y-%m-%d %H-%M-%S')
-ggsave(paste0('NOAA_Azure/results/figures/yield_curves',t,'_OY_1.png'), f_plot1, width = 7, height = 7)
-ggsave(paste0('NOAA_Azure/results/figures/yield_curves',t,'_OY_2.png'), f_plot2, width = 7, height = 7)
+# t <- format(Sys.time(),'%Y-%m-%d %H-%M-%S')
+ggsave(paste0('NOAA_Azure/results/figures/oy_paper/yield_curves',t,'_OY_1.png'), f_plot1, width = 7, height = 7)
+ggsave(paste0('NOAA_Azure/results/figures/oy_paper/yield_curves',t,'_OY_2.png'), f_plot2, width = 7, height = 7)
 
-# # make a figure for the WFC talk
-# p_pol <- f_df_nprb %>%
-#   filter(LongName == "Walleye pollock", type == "Catch") %>%
-#   ggplot(aes(x = f, y = mt/1000))+
-#   geom_line()+
-#   geom_point(size = 2)+
-#   geom_vline(data = atlantis_fmsy %>% filter(LongName == "Walleye pollock"), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
-#   theme_bw()+
-#   scale_y_continuous(limits = c(0, NA))+
-#   labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
-#   facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
-#   theme(strip.text.y = element_text(angle=0))
-# ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/POL_OY.png'), p_pol, width = 4, height = 2)
+# # make a figure for the OY paper
+# focus on key stocks: POL, COD, ATF, HAL, SBF, POP, FFS
+key_grps <- grps %>% filter(Code %in% c("POL", "COD", "ATF", "HAL", "SBF", "POP", "FFS")) %>% pull(LongName)
+p_ms <- f_df_ms %>%
+  filter(LongName %in% key_grps) %>%
+  ggplot(aes(x = f, y = mt/1000))+
+  geom_line()+
+  geom_point(size = 1.5)+
+  geom_vline(data = fmsy %>% filter(LongName %in% key_grps), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
+  geom_vline(data = atlantis_fmsy %>% filter(LongName %in% key_grps), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
+  geom_hline(data = atlantis_fmsy %>% filter(LongName %in% key_grps) %>% mutate(type = 'Biomass'),
+             aes(yintercept = b_fmsy/1000, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
+  geom_text(data = annotations %>% filter(LongName %in% key_grps) %>% mutate(type = 'Biomass'),
+            aes(x=Inf,y=Inf,hjust=1,vjust=1,label=paste0('Depletion=',depletion)), color = 'blue')+
+  theme_bw()+
+  scale_y_continuous(limits = c(0, NA))+
+  labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
+  facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
+  theme(strip.text.y = element_text(angle=0))
+ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biom_catch_key_stocks.png'), p_ms, width = 7, height = 7)
 
-  

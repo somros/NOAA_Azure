@@ -192,21 +192,11 @@ ms_yield_long <- df_mult <- ms_yield_df %>% # one of these is for later plots th
 # b0
 # For AMSS and OY climate scenarios:
 # What is B0 under different climate and ATF fishing regimes?
-b0 <- ms_yield_long %>% filter(mult == 0, type == "Biomass") %>% dplyr::select(LongName, run, mt) %>% rename(b0 = mt)
+# b0 <- ms_yield_long %>% filter(mult == 0, type == "Biomass") %>% dplyr::select(LongName, run, mt) %>% rename(b0 = mt)
 # or leave it fixed to base conditions
-# b0 <- ms_yield_long %>% filter(mult == 0, type == "Biomass", run == "base") %>% dplyr::select(LongName, mt) %>% rename(b0 = mt)
+b0 <- ms_yield_long %>% filter(mult == 0, type == "Biomass", run == "base") %>% dplyr::select(LongName, mt) %>% rename(b0 = mt)
 # b0_ss <- ss_yield_long %>% filter(f == 0, type == "Biomass") %>% dplyr::select(LongName, experiment, mt) %>% rename(b0 = mt)
 # b0 <- rbind(b0_ms, b0_ss)
-
-# TODO: fix this but use the ms_yield_long object to produce it (same as b0)
-# # produce a dataset of 35% B0, to be used to plot horizontal lines that will intersect the yield curve
-# # but B35% will now be different between runs with different steepness? Not between runs with smaller selex in theory
-# b35 <- f_df %>%
-#   filter(f == 0) %>% # producing it off of v1 (v2 should be the same, v3 should be similar)
-#   rowwise() %>%
-#   mutate(b35 = ifelse(type== 'Biomass', mt * 0.35, NA)) %>%
-#   ungroup() %>%
-#   select(LongName, Code, type, b35)
 
 # max yield
 ymax_ms <- ms_yield_long %>% 
@@ -217,21 +207,11 @@ ymax_ms <- ms_yield_long %>%
   dplyr::select(LongName, run, mt, f) %>% 
   rename(ymax = mt) 
 
-# ymax_ss <- ss_yield_long %>% 
-#   filter(type == "Catch") %>% 
-#   group_by(LongName, experiment) %>%
-#   slice_max(mt) %>%
-#   ungroup() %>%
-#   dplyr::select(LongName, experiment, mt) %>% 
-#   rename(ymax = mt) 
-
-# ymax <- rbind(ymax_ms, ymax_ss)
 ymax <- ymax_ms
 
 # handle the NaN's from FHS
 ms_yield_long <- as.data.frame(ms_yield_long)
 ms_yield_long$f[is.nan(ms_yield_long$f)] <- NA
-
 
 # Plot yield functions ----------------------------------------------------
 # These are unclear to me when thinking of the different scenarios - what is b0?
@@ -248,8 +228,8 @@ yield_func <- ms_yield_long %>%
   #rbind(ss_yield_long) %>%
   dplyr::select(LongName, run, type, f, mt) %>%
   pivot_wider(id_cols = c(LongName, run, f), names_from = type, values_from = mt) %>%
-  # left_join(b0, by = c("LongName")) %>% # if you are keep static reference point
-  left_join(b0, by = c("LongName", "run")) %>%
+  left_join(b0, by = c("LongName")) %>% # if you are keep static reference point
+  # left_join(b0, by = c("LongName", "run")) %>%
   mutate(depletion = Biomass / b0) %>%
   left_join(ymax %>% select(-f), by = c("LongName", "run")) %>%
   mutate(yfrac = Catch / ymax) %>%
@@ -305,7 +285,6 @@ yield_func_plot
 # is there a way to make this plot useful?
 # ggsave(paste0("NOAA_Azure/results/figures/oy/yield_functions.png"), yield_func_plot, width = 11, height = 6.5)
 
-
 # Biomass and catch curves ------------------------------------------------
 # plot catch and biomass curves
 to_plot <- ms_yield_long
@@ -314,9 +293,6 @@ to_plot <- ms_yield_long
 to_plot$LongNamePlot <- gsub(" ", "\n", to_plot$LongName)
 ymax$LongNamePlot <- gsub(" ", "\n", ymax$LongName)
 ymax$type <- "Catch"
-# fmsy$LongNamePlot <- gsub(" ", "\n", fmsy$LongName)
-# atlantis_fmsy$LongNamePlot <- gsub(" ", "\n", atlantis_fmsy$LongName)
-# b35$LongNamePlot <- gsub(" ", "\n", b35$LongName)
 
 # rename scenarios and order them
 # key_scenarios <- data.frame("Scenario" = c("Base", "Warm", "Fixed ATF", "Fixed ATF + Warm"),
@@ -332,7 +308,7 @@ ymax$type <- "Catch"
 #          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 to_plot <- to_plot %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
-                                     "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks",
+                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks",
                                      "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
@@ -341,7 +317,7 @@ to_plot <- to_plot %>%
 #          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 ymax <- ymax %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
-                          "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks",
+                          "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks",
                           "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Base model (1999)"))
 
@@ -354,54 +330,49 @@ ymax <- ymax %>%
 #                                              "Fixed (1/4 FMSY)"))
 to_plot$Fishing <- factor(to_plot$Fishing,
                           levels = c("MFMSY varying for all stocks",
-                                     "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 ymax$Fishing <- factor(ymax$Fishing,
                           levels = c("MFMSY varying for all stocks",
-                                     "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # make figures for slides (break into two columns)
 # plot
 grp1 <- unique(to_plot$LongNamePlot)[1:6]
 f_plot1 <- to_plot %>%
   filter(LongNamePlot %in% grp1) %>%
+  filter(type == "Catch") %>%
   ggplot(aes(x = f, y = mt/1000, color = Climate, linetype = Fishing))+
   geom_line(linewidth = 1)+
-  #geom_point(size = 1.6)+
-  #scale_color_manual(values = c("blue3", "red3"))+
   scale_color_viridis_d(begin = 0.2, end = 0.8)+
   geom_vline(data = ymax %>% filter(LongNamePlot %in% grp1), aes(xintercept = f, color = Climate, linetype = Fishing))+
-  # geom_vline(data = fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
-  # geom_vline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
-  # geom_hline(data = b35 %>% filter(LongNamePlot %in% grp1), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
   theme_bw()+
   scale_y_continuous(limits = c(0, NA))+
   labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
   facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
   theme(strip.text.y = element_text(angle=0))
+f_plot1
 
 grp2 <- unique(to_plot$LongNamePlot)[7:12]
 f_plot2 <- to_plot %>%
   filter(LongNamePlot %in% grp2) %>%
+  filter(type == "Catch") %>%
   ggplot(aes(x = f, y = mt/1000, color = Climate, linetype = Fishing))+
   geom_line(linewidth = 1)+
-  #geom_point(size = 1.6)+
-  #scale_color_manual(values = c("blue3", "red3"))+
   scale_color_viridis_d(begin = 0.2, end = 0.8)+
   geom_vline(data = ymax %>% filter(LongNamePlot %in% grp2), aes(xintercept = f, color = Climate, linetype = Fishing))+
-  # geom_vline(data = fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
-  # geom_vline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
-  # geom_hline(data = b35 %>% filter(LongNamePlot %in% grp1), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
   theme_bw()+
   scale_y_continuous(limits = c(0, NA))+
   labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
   facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
   theme(strip.text.y = element_text(angle=0))
+f_plot2
 
 # make a figure
-ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/biomass_catch',t,'_MS_1.png'), f_plot1, width = 7.5, height = 7)
-ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/biomass_catch',t,'_MS_2.png'), f_plot2, width = 7.5, height = 7)
+ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biomass_catch',t,'_MS_1.png'), f_plot1, width = 7.5, height = 7)
+ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biomass_catch',t,'_MS_2.png'), f_plot2, width = 7.5, height = 7)
 
 # look at a couple of key species only
+# for plots
 grp3 <- c("Arrowtooth\nflounder", "Walleye\npollock", "Pacific\ncod", "Sablefish")
 f_plot3 <- to_plot %>%
   filter(LongNamePlot %in% grp3, type == "Catch") %>%
@@ -413,16 +384,14 @@ f_plot3 <- to_plot %>%
                filter(LongNamePlot %in% grp3) %>% 
                filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks")), 
              aes(xintercept = f, color = Climate, linetype = Fishing))+
-  # geom_vline(data = fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = FMSY, group = LongNamePlot), linetype = 'dashed', color = 'orange')+
-  # geom_vline(data = atlantis_fmsy %>% filter(LongNamePlot %in% grp1), aes(xintercept = atlantis_fmsy, group = LongNamePlot), linetype = 'dashed', color = 'blue')+
-  # geom_hline(data = b35 %>% filter(LongNamePlot %in% grp1), aes(yintercept = b35/1000, group = LongNamePlot), linetype = 'dashed', color = 'red')+
   theme_bw()+
   scale_y_continuous(limits = c(0, NA))+
   labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
   facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
   theme(strip.text.y = element_text(angle=0))
+f_plot3
 
-ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_MS_3.png'), f_plot3, width = 6, height = 4)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_MS_3.png'), f_plot3, width = 6, height = 4)
 
 # Diagnostics: top predators and forage fish ------------------------------
 
@@ -476,6 +445,7 @@ ms_other_df <- bind_rows(ms_other_list) %>%
   left_join(grps %>% select(Code, LongName), by = "Code")
 
 # get b0
+# note that 
 b0_other <- ms_other_df %>% filter(mult == 0) %>% dplyr::select(LongName, run, biomass_mt) %>% rename(b0 = biomass_mt)
 
 ms_other_df <- ms_other_df %>%
