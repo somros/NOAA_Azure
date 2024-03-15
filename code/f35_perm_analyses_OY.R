@@ -57,6 +57,7 @@ f35_vector <- read.csv("NOAA_Azure/data/f35_vector_PROXY.csv")
 
 # list Tier 3 stocks 
 t3_fg <- f_lookup %>% pull(species) %>% unique() %>% sort()
+t3_names <- grps %>% filter(Code %in% t3_fg) %>% pull(Name) # names for nc files pulling
 
 # get the results files from the multispecies runs
 f35_path1 <- paste0("NOAA_Azure/results/f35/",batch_res1)
@@ -502,7 +503,8 @@ for(i in 1:length(f35_results)){
     slice_tail(n = 5) %>%
     summarise(across(all_of(t3_fg), ~mean(.x, na.rm = T))) %>%
     mutate(mult = this_mult,
-           run = this_run)
+           run = this_run,
+           idx = this_idx)
   
   catch_list[[i]] <- this_catch
   
@@ -512,7 +514,7 @@ catch_df <- bind_rows(catch_list)
 
 # reshape and calculate total
 catch_df_long <- catch_df %>%
-  pivot_longer(-c(run, mult), names_to = "Code", values_to = "mt") %>%
+  pivot_longer(-c(run, mult, idx), names_to = "Code", values_to = "mt") %>%
   filter(Code != "HAL") %>%
   group_by(run, mult) %>%
   mutate(total_yield = sum(mt),
