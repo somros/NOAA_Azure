@@ -21,7 +21,9 @@
 
 get_catch_ak_scalar <- function(nc_file){
   
-  this_idx <- as.numeric(gsub("-result.rds","", gsub("NOAA_Azure.*results/", "", nc_file)))
+  print(paste("Doing", nc_file))
+  
+  this_idx <- as.numeric(gsub(".nc","", gsub("NOAA_Azure.*output_", "", nc_file)))
   
   out <- tidync(nc_file)
   this.nc <- ncdf4::nc_open(nc_file)
@@ -30,6 +32,8 @@ get_catch_ak_scalar <- function(nc_file){
   catch_prop_ls <- list()
   
   for(n in 1:length(t3_names)){
+    
+    print(paste("Doing", t3_names[n]))
     
     # args for the function below
     fg <- t3_names[n] # this needs to use the "Name" to pull from the NC file
@@ -149,11 +153,12 @@ get_catch_ak_scalar <- function(nc_file){
       # average
       # produce one value per run per species
       
+      # NOTE: the MS batches have annual output in the biology file too, so no need to re-index
       catch_prop_from_ak <- catch_prop_from_ak %>%
         filter(area == "ak") %>% # keep proportion in AK only
         filter(ts > 0) %>% # drop t0
-        filter(ts %in% seq(5,250,5)) %>% # resample to have annual time steps instead of 73 days
-        mutate(ts = ts / 5) %>% # reindex the time step accordingly 
+        # filter(ts %in% seq(5,250,5)) %>% # resample to have annual time steps instead of 73 days
+        # mutate(ts = ts / 5) %>% # reindex the time step accordingly 
         slice_tail(n = 5) %>% # keep end of the run for consistency with the catch sampling
         group_by(Name) %>%
         summarize(ak_prop = mean(prop))

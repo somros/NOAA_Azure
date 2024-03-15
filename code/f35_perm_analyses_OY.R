@@ -369,8 +369,8 @@ f_plot2 <- to_plot %>%
 f_plot2
 
 # make a figure
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biomass_catch',t,'_MS_1.png'), f_plot1, width = 7.5, height = 7)
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biomass_catch',t,'_MS_2.png'), f_plot2, width = 7.5, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biomass_catch',t,'_MS_1.png'), f_plot1, width = 7.5, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biomass_catch',t,'_MS_2.png'), f_plot2, width = 7.5, height = 7)
 
 # look at a couple of key species only
 # for plots
@@ -393,7 +393,7 @@ f_plot_ms <- to_plot %>%
   theme(strip.text.y = element_text(angle=0))
 f_plot_ms
 
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/catch',t,'_MS_ms.png'), f_plot_ms, width = 6, height = 6)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/catch',t,'_MS_ms.png'), f_plot_ms, width = 6, height = 6)
 
 # Global yield ------------------------------------------------------------
 
@@ -475,7 +475,7 @@ global_yield_ss <- ss_yield_long_fidx %>%
   labs(x = expression("F"[OFL]~" (from single-species assessment) multiplier"), y = "Catch (1000 mt)", fill = "Stock")
 global_yield_ss
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ss.png"), global_yield_ss, width = 6, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ss.png"), global_yield_ss, width = 6, height = 4)
 
 # now for the multispecies runs
 # list
@@ -511,6 +511,13 @@ for(i in 1:length(f35_results)){
 }
 
 catch_df <- bind_rows(catch_list)
+
+# apply scaling of catch by biomass in AK, so that we only have AK catch now
+source("NOAA_Azure/code/nc_for_scaling.R")
+catch_scalars <- bind_rows(lapply(f35_nc, get_catch_ak_scalar)) # this is very slow, it can be optimized in many ways
+# save this as it takes so long to produce
+
+# view, is the scalar changing across runs?
 
 # reshape and calculate total
 catch_df_long <- catch_df %>%
@@ -557,7 +564,7 @@ global_yield_ms <- catch_df_long %>%
   facet_grid(Climate~`F on\narrowtooth`)
 global_yield_ms
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms.png"), global_yield_ms, width = 6.1, height = 7)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms.png"), global_yield_ms, width = 6.1, height = 7)
 
 # test <- catch_df_long %>% filter(run == "base")
 # test %>% group_by(mult) %>% summarize(mt = sum(mt))
@@ -654,8 +661,8 @@ ms_vs_ss_plot_2 <- ms_vs_ss %>%
   theme(strip.text.y = element_text(angle=0))
 
 # make a figure
-ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_comp_1.png'), ms_vs_ss_plot_1, width = 5.5, height = 7)
-ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_comp_2.png'), ms_vs_ss_plot_2, width = 5.5, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_comp_1.png'), ms_vs_ss_plot_1, width = 5.5, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_comp_2.png'), ms_vs_ss_plot_2, width = 5.5, height = 7)
 
 # aggregate yield (SS vs Base MS vs ATF case)
 # YOU CANNOT SUM UP YIELDS OF DIFFERENT SPECIES OVER F BECAUSE F CHANGES BETWEEN SPECIES
@@ -711,7 +718,7 @@ p_below_target <- below_target %>%
   facet_grid(Climate~`F on\narrowtooth`)
 p_below_target
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/below_target.png"), p_below_target, width = 5.5, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/below_target.png"), p_below_target, width = 5.5, height = 4)
 
 # Diagnostics: top predators and forage fish ------------------------------
 
@@ -823,8 +830,8 @@ other_plot_forage <- ms_other_df %>%
   guides(linetype=guide_legend(order=1), color=guide_legend(order=2))+
   facet_wrap(~LongName)
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top.png"), other_plot_top, width = 7, height = 6)
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage.png"), other_plot_forage, width = 7, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top.png"), other_plot_top, width = 7, height = 6)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage.png"), other_plot_forage, width = 7, height = 4)
 
 # Numbers at age from nc files --------------------------------------------
 
@@ -975,8 +982,8 @@ naa_plot2 <- naa %>%
 naa_plot2
 
 # make a figure
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_1.png'), naa_plot1, width = 7, height = 7)
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_2.png'), naa_plot2, width = 7, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_1.png'), naa_plot1, width = 7, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_2.png'), naa_plot2, width = 7, height = 7)
 
 # key groups
 naa_plot_ms <- naa %>%
@@ -991,7 +998,7 @@ naa_plot_ms <- naa %>%
   theme(strip.text.y = element_text(angle=0))
 naa_plot_ms
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/NAA_ms.png"), naa_plot_ms, width = 8, height = 6.5)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/NAA_ms.png"), naa_plot_ms, width = 8, height = 6.5)
 
 # Weight at age from nc files -----------------------------------------------------------
 
