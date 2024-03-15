@@ -512,13 +512,6 @@ for(i in 1:length(f35_results)){
 
 catch_df <- bind_rows(catch_list)
 
-# apply scaling of catch by biomass in AK, so that we only have AK catch now
-source("NOAA_Azure/code/nc_for_scaling.R")
-catch_scalars <- bind_rows(lapply(f35_nc, get_catch_ak_scalar)) # this is very slow, it can be optimized in many ways
-# save this as it takes so long to produce
-
-# view, is the scalar changing across runs?
-
 # reshape and calculate total
 catch_df_long <- catch_df %>%
   pivot_longer(-c(run, mult, idx), names_to = "Code", values_to = "mt") %>%
@@ -529,25 +522,45 @@ catch_df_long <- catch_df %>%
   ungroup() %>%
   left_join(grps %>% select(Code, LongName), by = "Code")
 
+# apply scaling of catch by biomass in AK, so that we only have AK catch now
+source("NOAA_Azure/code/nc_for_scaling.R")
+catch_scalars <- bind_rows(lapply(f35_nc, get_catch_ak_scalar)) # this is very slow, it can be optimized in many ways
+# save this as it takes so long to produce
+write.csv(catch_scalars, "NOAA_Azure/data/catch_scalars.csv", row.names = F)
+
+# view, is the scalar changing across runs?
+# catch_scalars %>%
+#   left_join(oy_key, by = "idx") %>%
+#   ggplot(aes(x = mult, y = ak_prop, color = run))+
+#   geom_point()+
+#   facet_wrap(~Name)
+# overall it seems almost identical across climate / predation scenarios, changing a bit over F for 2 groups so good to use specific ones
+
+catch_df_long_ak <- catch_df_long %>%
+  left_join(catch_scalars %>% 
+              left_join(grps %>% 
+                          dplyr::select(Code, Name))) %>%
+  mutate(mt_ak = mt * ak_prop)
+  
 # add scenario information
 # pretty verbose for WFC now
-catch_df_long <- catch_df_long %>%
+catch_df_long_ak <- catch_df_long_ak %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), 
                                      "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks", 
                                      "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
-catch_df_long$`F on\narrowtooth` <- factor(catch_df_long$`F on\narrowtooth`, 
+catch_df_long_ak$`F on\narrowtooth` <- factor(catch_df_long_ak$`F on\narrowtooth`, 
                                            levels = c("MFMSY varying for all stocks",
                                                       "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # spaces
-catch_df_long$LongNamePlot <- gsub(" - ", "\n", catch_df_long$LongName)
+catch_df_long_ak$LongNamePlot <- gsub(" - ", "\n", catch_df_long_ak$LongName)
 
-global_yield_ms <- catch_df_long %>%
+global_yield_ms <- catch_df_long_ak %>%
   #filter(run %in% c("base", "climate")) %>%
-  ggplot(aes(x = mult, y = mt / 1000, fill = LongNamePlot))+
+  ggplot(aes(x = mult, y = mt_ak / 1000, fill = LongNamePlot))+
   geom_bar(stat = "identity", position = "stack")+
   scale_fill_viridis_d()+
   #scale_x_continuous(breaks = seq(0,maxmult,length.out=11))+
@@ -564,7 +577,7 @@ global_yield_ms <- catch_df_long %>%
   facet_grid(Climate~`F on\narrowtooth`)
 global_yield_ms
 
-# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms.png"), global_yield_ms, width = 6.1, height = 7)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms_AK.png"), global_yield_ms, width = 6.1, height = 7)
 
 # test <- catch_df_long %>% filter(run == "base")
 # test %>% group_by(mult) %>% summarize(mt = sum(mt))
