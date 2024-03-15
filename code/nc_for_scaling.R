@@ -11,6 +11,10 @@
 # they can all be combined into one df with an index that is then fileterd and applied for each set of CSV outputs
 
 
+# This script examines consistency between the spatial distribution of the biomass and of the catch,
+# as extracted from out.nc and TOTCATC.nc. The goal is to justify scaling model-wide catch by the
+# biomass proportion in the nc file.
+
 library(tidyverse)
 library(here)
 library(tidyr)
@@ -19,6 +23,8 @@ library(ggh4x)
 library(viridis)
 library(tidync)
 library(ncdf4)
+library(rbgm)
+library(sf)
 
 # get example netcdf from base
 this_nc_file <- "../Parametrization/output_files/data/out_1517/outputGOA01517_test.nc"
@@ -43,9 +49,10 @@ grps <- grps %>% left_join(biomass_groups)
 
 selex <- read.csv("data/age_at_selex_new.csv", header = T) # age at selectivity
 
-all_fg <- grps %>% filter(GroupType %in% c("FISH", "SHARK", "MAMMAL", "BIRD")) %>% pull(Name)
+all_fg <- grps %>% filter(GroupType %in% c("FISH", "SHARK", "MAMMAL", "BIRD")) %>% pull(Name) # only focus on vertebrates
 
 
+# make an empty list to populate with biomass for each group
 biom_spatial_ls <- list()
 
 for(n in 1:length(all_fg)){
@@ -54,11 +61,10 @@ for(n in 1:length(all_fg)){
   fg <- all_fg[n] # this needs to use the "Name" to pull from the NC file
   out <- this_tidync
   this.nc <- this_nc
-  run <- 1
-  
+
   fg_atts <- grps %>% filter(Name==fg)
   
-  if(fg_atts$BiomassType!="vertebrate") stop("weight at age only for vertebrates.")
+  if(fg_atts$BiomassType!="vertebrate") stop("weight at age only for vertebrates.") # check that we are doing this for verts
   
   #Extract from the output .nc file the appropriate reserve N time series variables
   resN_vars <- hyper_vars(out) %>% # all variables in the .nc file active grid
@@ -84,6 +90,7 @@ for(n in 1:length(all_fg)){
     nums <-purrr::map(abun_vars$name,ncdf4::ncvar_get,nc=this.nc) #numbers by age group,box,layer,time
     
     # Formula for biomass in each cell will be (resN+structN)*nums
+    # this step maintains the spatial and temporal structure of the nc arrays
     biom <- list()
     for(i in 1:length(resN)){
       biom[[i]] <- (resN[[i]] + strucN[[i]]) * nums[[i]] * 20 * 5.7 / 1000000000 # go from mgN to tons
@@ -93,9 +100,10 @@ for(n in 1:length(all_fg)){
     biom_box <- lapply(biom, function(x) apply(x, c(2, 3), sum))
     
     # now turn to data frame
+    # create empty list
     biom_box_ls <- list()
     
-    # Loop over each matrix in the collapsed list to fill the data frame
+    # Loop over each matrix in the collapsed list to fill the data frame (i.e. over each age class)
     for(i in 1:length(biom_box)) {
       # Get the current matrix
       mat <- biom_box[[i]]
@@ -124,6 +132,7 @@ for(n in 1:length(all_fg)){
       
     }
     
+    # turn list to data frame
     biom_box_df <- bind_rows(biom_box_ls)
     
     # write this out for comparison with catch
@@ -146,8 +155,6 @@ for(n in 1:length(all_fg)){
     #   select(ts, age, area, prop) %>%
     #   distinct()
     
-    
-    
     # view:
     # biom_ak_prop %>%
     #   filter(area == "ak") %>%
@@ -162,28 +169,65 @@ for(n in 1:length(all_fg)){
   
 }
 
+# now bind all species
 biom_spatial_df <- bind_rows(biom_spatial_ls)
 
+# have a look in space, to see if this looks like the ss maps
+# for the purposes of comparins gto catch we only want the selected age classes
+biom_spatial_df_noage <- biom_spatial_df %>%
+  left_join(grps %>% dplyr::select(Code, Name), by = "Name") %>%
+  left_join(selex, by = "Code") %>%
+  mutate(idx = age - age_class_selex) %>%
+  filter(idx >= 0) %>% # keep only selected age classes
+  group_by(ts, box_id, Code) %>% # aggregate all age classes
+  summarise(mt = sum(mt)) %>%
+  filter(ts > 0) %>% # drop t0 (init)
+  filter(ts %in% seq(5,250,5)) %>% # keep every 5th time step (annual steps instead of 73 days)
+  mutate(ts = ts / 5) # renumber the time steps accordingly
+
+# now get proportions
+biom_props <- biom_spatial_df_noage %>%
+  group_by(ts, Code) %>%
+  mutate(tot_mt = sum(mt)) %>%
+  ungroup() %>%
+  mutate(prop_biom = mt / tot_mt)
+
+# read in geom
+bgm <- read_bgm("data/GOA_WGS84_V4_final.bgm")
+goa_domain <- bgm %>% box_sf()
+
+# view what it looks like at the end of the time series
+goa_domain %>%
+  dplyr::select(box_id) %>%
+  left_join(biom_props %>% dplyr::select(ts, box_id, Code, prop_biom) %>% filter(ts == 45)) %>% # picking one time step
+  filter(Code %in% c("POL","COD","ATF","POP","SBF","FFS","FHS","FFD","REX","RFS","RFP","HAL")) %>%
+  ggplot()+
+  geom_sf(aes(fill = prop_biom))+
+  scale_fill_viridis()+
+  facet_wrap(~Code, nrow = 4)
+
+# looking really close to S1-S4 inputs - in part because in this run there are no climate forcings further shaping distributions
+# it is possible that these would diverge in CC runs, which is fine and expected
 
 # now compare spatial dist of biomass to spatial distribution of the catch
 # use the TOTCATCH.nc file for the comparison
 # script check_catch_outputs.R demonstrates that the 3 outputs for catch are rather comparable
 
-# nc tot file
+# nc tot file from the same run
 catch_nc_tot_file <- "../Parametrization/output_files/data/out_1517/outputGOA01517_testTOTCATCH.nc"
 this_tidync <- tidync(catch_nc_tot_file)
 this_nc <- ncdf4::nc_open(catch_nc_tot_file)
 
-all_fg <- grps %>% filter(GroupType %in% c("FISH", "SHARK", "MAMMAL", "BIRD")) %>% pull(Code)
+all_fg <- grps %>% filter(GroupType %in% c("FISH", "SHARK", "MAMMAL", "BIRD")) %>% pull(Code) # different from above because this file has Code in the variable fields
 
+# make an empty list
 catch_TOTCATCH <- list()
 
 for(i in 1:length(all_fg)){
   fg <- all_fg[i] # this needs to use the "Code" to pull from the NC file
   out <- this_tidync
   this.nc <- this_nc
-  run <- 1
-  
+
   fg_atts <- grps %>% filter(Name==fg)
   
   #Extract from the output .nc file the appropriate reserve N time series variables
@@ -219,28 +263,10 @@ for(i in 1:length(all_fg)){
   
 }
 
+# tie into one list for all species
 catch_TOTCATCH <- bind_rows(catch_TOTCATCH)
 
-# bring in selectivity, because juvenile biomass will have the distribution of the adults mostly
-# flatten biomass over age classes
-biom_spatial_df_noage <- biom_spatial_df %>%
-  left_join(grps %>% select(Code, Name), by = "Name") %>%
-  left_join(selex, by = "Code") %>%
-  mutate(idx = age - age_class_selex) %>%
-  filter(idx >= 0) %>% # keep only selected age classes
-  group_by(ts, box_id, Code) %>%
-  summarise(mt = sum(mt)) %>%
-  filter(ts > 0) %>%
-  filter(ts %in% seq(5,250,5)) %>% # keep every 5th time step
-  mutate(ts = ts / 5)
-
-# now get proportions, which is what we need to compare
-biom_props <- biom_spatial_df_noage %>%
-  group_by(ts, Code) %>%
-  mutate(tot_mt = sum(mt)) %>%
-  ungroup() %>%
-  mutate(prop_biom = mt / tot_mt)
-
+# turn to data frame
 catch_props <- catch_TOTCATCH %>%
   filter(ts > 0) %>%
   group_by(ts, Code) %>%
@@ -248,13 +274,20 @@ catch_props <- catch_TOTCATCH %>%
   ungroup() %>%
   mutate(prop_catch = mt / tot_mt)
 
+# now compare
 # only do t3
 comp <- biom_props %>%
   left_join(catch_props, by = c("ts","box_id","Code")) %>%
   filter(Code %in% c("POL","COD","ATF","POP","SBF","FFS","FHS","FFD","REX","RFS","RFP","HAL")) %>%
   mutate(comp = prop_biom / prop_catch)
 
-hist(comp$comp)
+comp %>%
+  ggplot(aes(x=prop_biom, y = prop_catch, color = box_id))+
+  geom_point()+
+  theme_bw()+
+  facet_wrap(~Code)
+
+# hist(comp$comp)
 # this looks pretty good for the stocks we are interested in - props of biomass trach with props of catch
 
 # now calculate prop in AK for both
