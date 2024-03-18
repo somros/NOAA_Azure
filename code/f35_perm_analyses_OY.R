@@ -611,11 +611,14 @@ global_yield_ms
 # ggsave(paste0("NOAA_Azure/results/figures/oy_wfc/global_yield_wfc_blank.png"), global_yield_ms, width = 8, height = 4)
 
 # make a table with max catch per scenario for the report
-max_catch <- catch_df_long %>%
-  select(run, total_yield) %>%
+max_catch <- catch_df_long_ak %>%
+  select(run, idx, mt_ak) %>%
+  group_by(run, idx) %>%
+  summarize(total_yield_ak = sum(mt_ak, na.rm = T)) %>%
+  select(run, total_yield_ak) %>%
   distinct() %>%
   group_by(run) %>%
-  slice_max(total_yield)
+  slice_max(total_yield_ak)
 
 # Single-species vs multispecies fishing ----------------------------------
 ms_vs_ss <- ss_yield_long %>%
@@ -629,10 +632,13 @@ ms_vs_ss$LongNamePlot <- gsub(" ", "\n", ms_vs_ss$LongName)
 
 # clarify labels
 ms_vs_ss <- ms_vs_ss %>%
-  mutate(Fishing = ifelse(run == "base", "MS - varying for all", ifelse(run == "ss", "SS", "MS - fixed for ATF")))
+  mutate(Fishing = ifelse(run == "base", "MFMSY varying for all stocks", 
+                          ifelse(run == "ss", "Single-species", "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks")))
 
 # reorder factors for legend
-ms_vs_ss$Fishing <- factor(ms_vs_ss$Fishing, levels = c("SS", "MS - varying for all", "MS - fixed for ATF"))
+ms_vs_ss$Fishing <- factor(ms_vs_ss$Fishing, levels = c("Single-species", 
+                                                        "MFMSY varying for all stocks", 
+                                                        "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # make some vertical lines for FMSY
 ymax_comp <- ms_vs_ss %>%
@@ -647,7 +653,7 @@ ms_vs_ss_plot_1 <- ms_vs_ss %>%
   geom_line(linewidth = 1)+
   geom_vline(data = ymax_comp %>% 
                filter(LongNamePlot %in% grp1) %>% 
-               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "MS - fixed for ATF")), 
+               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks")), 
              aes(xintercept = f, color =  Fishing))+
   #scale_color_manual(values = c("blue3", "red3", "orange"))+
   scale_color_viridis_d(begin = 0.1, end = 0.9)+
@@ -663,7 +669,7 @@ ms_vs_ss_plot_2 <- ms_vs_ss %>%
   geom_line(linewidth = 1)+
   geom_vline(data = ymax_comp %>% 
                filter(LongNamePlot %in% grp2) %>% 
-               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "MS - fixed for ATF")), 
+               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks")), 
              aes(xintercept = f, color =  Fishing))+
   #scale_color_manual(values = c("blue3", "red3", "orange"))+
   scale_color_viridis_d(begin = 0.1, end = 0.9)+
@@ -678,18 +684,28 @@ ms_vs_ss_plot_2 <- ms_vs_ss %>%
 # ggsave(paste0('NOAA_Azure/results/figures/oy_wfc/catch',t,'_comp_2.png'), ms_vs_ss_plot_2, width = 5.5, height = 7)
 
 # aggregate yield (SS vs Base MS vs ATF case)
-# YOU CANNOT SUM UP YIELDS OF DIFFERENT SPECIES OVER F BECAUSE F CHANGES BETWEEN SPECIES
-# Trying with an area plot but I cannot get this to work
-# Chatgpt claims that's because x is incosnsitent across facets, but so it is in the plot above and that one works so not sure
-# ms_vs_ss_plot_sum <- ms_vs_ss %>%
-#   filter(type == "Catch") %>%
-#   ggplot(aes(x = f, y = mt/1000, fill = LongName))+
-#   geom_area(stat = "align", position = "stack")+
-#   scale_fill_viridis_d()+
-#   theme_bw()+
-#   labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
-#   facet_grid(rows = vars(Fishing))+
-#   theme(strip.text.y = element_text(angle=0))
+# f is at different intervals across the facets, so we need to interpolate
+f_range <- seq(0,1.8,0.01)
+
+ms_vs_ss_interp <- ms_vs_ss %>%
+  filter(type == "Catch") %>%
+  group_by(Fishing, LongName, LongNamePlot) %>%  # Group by the factors
+  do({
+    data.frame(f = f_range, 
+               mt = approx(x = .$f, y = .$mt, xout = f_range)$y)
+  }) %>%
+  ungroup()  # Ensure the resulting data frame is not grouped
+
+ms_vs_ss_plot_sum <- ms_vs_ss_interp %>%
+  ggplot(aes(x = f, y = mt/1000, fill = LongName))+
+  geom_area(stat = "align", position = "stack")+
+  # geom_hline(yintercept = 800, color = "red", linetype = "dashed")+
+  scale_fill_viridis_d()+
+  theme_bw()+
+  labs(x = 'Fishing mortality (F)', y = '1000\'s of tons', fill = "Stock")+
+  facet_wrap(~Fishing, ncol = 1)
+
+ggsave(paste0('NOAA_Azure/results/figures/oy_paper/catch',t,'_comparison_aggregate.png'), ms_vs_ss_plot_sum, width = 6, height = 7)
 
 # Below the target of 35% --------------------------------------------------------------
 
@@ -845,6 +861,14 @@ other_plot_forage <- ms_other_df %>%
 
 # ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top.png"), other_plot_top, width = 7, height = 6)
 # ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage.png"), other_plot_forage, width = 7, height = 4)
+
+# get max changes
+max_change <- ms_other_df %>%
+  filter(Code %in% c("CAP","SAN","EUL","HER", "KWT","KWR","DOL","SSL","PIN","BDF","BDI","BSF","BSI")) %>%
+  group_by(run, Code) %>%
+  slice_max(biomchange) %>%
+  select(run, Code, biomchange)
+  
 
 # Numbers at age from nc files --------------------------------------------
 
