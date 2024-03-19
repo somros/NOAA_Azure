@@ -133,7 +133,7 @@ for(i in 1:length(sp)){
 atlantis_fmsy <- bind_rows(atlantis_fmsy_ls)
 
 # save this for future calculations
-write.csv(atlantis_fmsy, "NOAA_Azure/data/f35_vector_PROXY_OY_SS.csv", row.names = F)
+# write.csv(atlantis_fmsy, "NOAA_Azure/data/f35_vector_PROXY_OY_SS.csv", row.names = F)
 
 # annotations for the plots (atlantis depletion)
 annotations <- atlantis_fmsy %>% 
@@ -237,6 +237,19 @@ p_ms <- f_df_ms %>%
   facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
   theme(strip.text.y = element_text(angle=0))
 ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biom_catch_key_stocks.png'), p_ms, width = 7, height = 7)
+
+# make simple catch curves for methods figure
+forplot <- "Pacific halibut"
+tt <- f_df_ms %>%
+  filter(LongName == forplot, type == "Catch") %>%
+  ggplot(aes(x = f, y = mt/1000))+
+  geom_line(linewidth = 1.5)+
+  geom_vline(data = atlantis_fmsy %>% filter(LongName == forplot), aes(xintercept = atlantis_fmsy, group = LongNamePlot), 
+             linetype = 'dashed', color = 'blue', linewidth = 1.5)+
+  theme_bw()+
+  scale_y_continuous(limits = c(0, NA))+
+  labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/",forplot,"_methods.png"),tt,width=3, height = 2)
 
 
 # Yield functions ---------------------------------------------------------

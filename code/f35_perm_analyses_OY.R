@@ -254,11 +254,11 @@ annotations <- b0 %>%
 
 # prepare for visualization as Cool vs Warm and as ATF varying vs fixed
 yield_func <- yield_func %>%
-  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FOFL)", "Varying"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
-yield_func$`F on\narrowtooth` <- factor(yield_func$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+yield_func$`F on\narrowtooth` <- factor(yield_func$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FOFL)"))
 
 # plot
 yield_func_plot <- yield_func %>%
@@ -305,36 +305,36 @@ ymax$type <- "Catch"
 
 # prepare for visualization as Cool vs Warm and as ATF varying vs fixed
 # to_plot <- to_plot %>%
-#   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+#   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FOFL)", "Varying"),
 #          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 to_plot <- to_plot %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
-                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks",
+                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks",
                                      "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # ymax <- ymax %>%
-#   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+#   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FOFL)", "Varying"),
 #          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 ymax <- ymax %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
-                          "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks",
+                          "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks",
                           "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 # to_plot$`F on\narrowtooth` <- factor(to_plot$`F on\narrowtooth`,
 #                           levels = c("Varying",
-#                                      "Fixed (1/4 FMSY)"))
+#                                      "Fixed (1/4 FOFL)"))
 # ymax$`F on\narrowtooth` <- factor(ymax$`F on\narrowtooth`,
 #                                   levels = c("Varying",
-#                                              "Fixed (1/4 FMSY)"))
+#                                              "Fixed (1/4 FOFL)"))
 to_plot$Fishing <- factor(to_plot$Fishing,
                           levels = c("MFMSY varying for all stocks",
-                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 ymax$Fishing <- factor(ymax$Fishing,
                           levels = c("MFMSY varying for all stocks",
-                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # make figures for slides (break into two columns)
 # plot
@@ -453,7 +453,7 @@ atlantis_oy <- atlantis_oy - (atlantis_oy * 0.08)
 # the result is 597469.1 mt, much lower than 800,000
 # This means that MSY calculated in Atlantis are lower than MSY from the assessments in 1987
 # This is fine. It means that stocks are not as productive in Atlantis
-# A caveat is that F on the nontarget species is at 1/4 FMSY, so this OY accounts for other stocks at a very specific state
+# A caveat is that F on the nontarget species is at 1/4 FOFL, so this OY accounts for other stocks at a very specific state
 # This state may be different from the state that other stocks had in 1987, and also their F is different
 # So, the different result is not surprising
 # More importantly, we should put this into the context of the multispecies MFSMY runs
@@ -524,7 +524,7 @@ catch_df_long <- catch_df %>%
 
 # apply scaling of catch by biomass in AK, so that we only have AK catch now
 source("NOAA_Azure/code/nc_for_scaling.R")
-catch_scalars <- bind_rows(lapply(f35_nc, get_catch_ak_scalar)) # this is very slow, it can be optimized in many ways
+# catch_scalars <- bind_rows(lapply(f35_nc, get_catch_ak_scalar)) # this is very slow, it can be optimized in many ways
 # save this as it takes so long to produce
 write.csv(catch_scalars, "NOAA_Azure/data/catch_scalars.csv", row.names = F)
 
@@ -546,14 +546,14 @@ catch_df_long_ak <- catch_df_long %>%
 # pretty verbose for WFC now
 catch_df_long_ak <- catch_df_long_ak %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), 
-                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks", 
+                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks", 
                                      "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 catch_df_long_ak$`F on\narrowtooth` <- factor(catch_df_long_ak$`F on\narrowtooth`, 
                                            levels = c("MFMSY varying for all stocks",
-                                                      "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                                      "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # spaces
 catch_df_long_ak$LongNamePlot <- gsub(" - ", "\n", catch_df_long_ak$LongName)
@@ -633,12 +633,12 @@ ms_vs_ss$LongNamePlot <- gsub(" ", "\n", ms_vs_ss$LongName)
 # clarify labels
 ms_vs_ss <- ms_vs_ss %>%
   mutate(Fishing = ifelse(run == "base", "MFMSY varying for all stocks", 
-                          ifelse(run == "ss", "Single-species", "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks")))
+                          ifelse(run == "ss", "Single-species", "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks")))
 
 # reorder factors for legend
 ms_vs_ss$Fishing <- factor(ms_vs_ss$Fishing, levels = c("Single-species", 
                                                         "MFMSY varying for all stocks", 
-                                                        "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                                        "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # make some vertical lines for FMSY
 ymax_comp <- ms_vs_ss %>%
@@ -653,7 +653,7 @@ ms_vs_ss_plot_1 <- ms_vs_ss %>%
   geom_line(linewidth = 1)+
   geom_vline(data = ymax_comp %>% 
                filter(LongNamePlot %in% grp1) %>% 
-               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks")), 
+               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks")), 
              aes(xintercept = f, color =  Fishing))+
   #scale_color_manual(values = c("blue3", "red3", "orange"))+
   scale_color_viridis_d(begin = 0.1, end = 0.9)+
@@ -669,7 +669,7 @@ ms_vs_ss_plot_2 <- ms_vs_ss %>%
   geom_line(linewidth = 1)+
   geom_vline(data = ymax_comp %>% 
                filter(LongNamePlot %in% grp2) %>% 
-               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks")), 
+               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks")), 
              aes(xintercept = f, color =  Fishing))+
   #scale_color_manual(values = c("blue3", "red3", "orange"))+
   scale_color_viridis_d(begin = 0.1, end = 0.9)+
@@ -705,7 +705,7 @@ ms_vs_ss_plot_sum <- ms_vs_ss_interp %>%
   labs(x = 'Fishing mortality (F)', y = '1000\'s of tons', fill = "Stock")+
   facet_wrap(~Fishing, ncol = 1)
 
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/catch',t,'_comparison_aggregate.png'), ms_vs_ss_plot_sum, width = 6, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/catch',t,'_comparison_aggregate.png'), ms_vs_ss_plot_sum, width = 6, height = 7)
 
 # Below the target of 35% --------------------------------------------------------------
 
@@ -728,14 +728,14 @@ below_target <- ms_yield_long %>%
 # pretty verbose for WFC now
 below_target <- below_target %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), 
-                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks", 
+                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks", 
                                      "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 below_target$`F on\narrowtooth` <- factor(below_target$`F on\narrowtooth`, 
                                            levels = c("MFMSY varying for all stocks",
-                                                      "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                                      "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 p_below_target <- below_target %>%
   ggplot(aes(x = mult, y = n_below_target))+
@@ -810,11 +810,11 @@ ms_other_df <- ms_other_df %>%
 
 # add factors for plot
 # ms_other_df <- ms_other_df %>%
-#   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+#   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FOFL)", "Varying"),
 #          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 # 
 # # reorder ATF F
-# ms_other_df$`F on\narrowtooth` <- factor(ms_other_df$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+# ms_other_df$`F on\narrowtooth` <- factor(ms_other_df$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FOFL)"))
 
 ms_other_df <- ms_other_df %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
@@ -979,14 +979,14 @@ naa$LongNamePlot <- gsub(" ", "\n", naa$LongName)
 # pretty verbose for WFC now
 naa <- naa %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"), 
-                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks", 
+                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks", 
                                      "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 naa$Fishing <- factor(naa$Fishing, 
                                           levels = c("MFMSY varying for all stocks",
-                                                     "1/4 FMSY on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # add column for age as factor
 naa$`Age class` <- factor(naa$age)
@@ -1133,11 +1133,11 @@ waa$LongNamePlot <- gsub(" ", "\n", waa$LongName)
 
 # add scenario information
 waa <- waa %>%
-  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FMSY)", "Varying"),
+  mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), "Fixed (1/4 FOFL)", "Varying"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
-waa$`F on\narrowtooth` <- factor(waa$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FMSY)"))
+waa$`F on\narrowtooth` <- factor(waa$`F on\narrowtooth`, levels = c("Varying", "Fixed (1/4 FOFL)"))
 
 # add column for age as factor
 waa$`Age class` <- factor(waa$age)
@@ -1179,207 +1179,6 @@ waa_plot2
 
 
 
-
-
-# # Diagnostics: biomass of unselected age classes --------------------------
-# 
-# # look at unselected biomass in both ms and ss
-# ms_unselected_list <- list()
-# 
-# for(i in 1:nrow(f35_key)){
-#   
-#   this_catch_file <- f35_catch_files[i]
-#   this_run <- as.numeric(substr((gsub(paste0("NOAA_Azure/results/f35/",batch,"/outputGOA0"), "", this_catch_file)), 1, 4))
-#   this_mult <- f35_key %>% filter(run == this_run) %>% pull(mult)
-#   
-#   # extract tables from results
-#   biomage <- read.table(f35_biomass_files[i], sep = " ", header = T)
-#   catch <- read.table(this_catch_file , sep = " ", header = T)
-#   
-#   # now extract data
-#   # SSB to plot and report in tables
-#   unselected_biomass <- biomage %>% 
-#     slice_tail(n = 5) %>% # use last xxx years
-#     summarise(across(-"Time", ~ mean(.x, na.rm = TRUE))) %>%
-#     ungroup() %>%
-#     pivot_longer(everything(), names_to = 'Code.Age', values_to = 'biomass_mt') %>%
-#     separate_wider_delim(Code.Age, delim = '.', names = c('Code', 'Age')) %>%
-#     filter(Code %in% t3_fg) %>%
-#     left_join(selex, by = 'Code') %>%
-#     mutate(idx = as.numeric(Age) - as.numeric(age_class_selex)) %>%
-#     filter(is.na(idx) | idx < 0) %>%
-#     group_by(Code) %>%
-#     summarise(biomass_mt = sum(biomass_mt)) %>%
-#     ungroup()
-#   
-#   # # calculate realized F after 1 year of data
-#   # # get initial biomass for the selected age classes
-#   biom_age_t1 <- biomage %>% 
-#     filter(Time == 0) %>% 
-#     pivot_longer(-Time, names_to = 'Code.Age', values_to = 'biomass') %>%
-#     separate_wider_delim(Code.Age, delim = '.', names = c('Code', 'Age')) %>%
-#     left_join(selex, by = 'Code') %>%
-#     mutate(idx = as.numeric(Age) - as.numeric(age_class_selex)) %>%
-#     filter(is.na(idx) | idx >= 0) %>%
-#     group_by(Code) %>%
-#     summarise(biomass = sum(biomass)) %>%
-#     ungroup() %>% 
-#     filter(Code %in% t3_fg)
-#   # 
-#   # # catch (one time step after biomass: how much did we catch in this time?)
-#   catch_t1 <- catch %>% 
-#     select(Time, all_of(t3_fg)) %>% 
-#     filter(Time == 365) %>%
-#     summarise(across(everything(), ~ mean(.x, na.rm = TRUE))) %>%
-#     pivot_longer(-Time, names_to = 'Code', values_to = 'catch') %>%
-#     select(-Time)
-#   # 
-#   # # calc realized f
-#   f_t1 <- biom_age_t1 %>% left_join(catch_t1, by = "Code") %>%
-#     mutate(exp_rate = catch/biomass,
-#            f = -log(1-exp_rate)) %>%#,
-#     #fidx = fidx) %>% # need this for joining later on
-#     select(Code, f)#, fidx) 
-#   
-#   # # bind all
-#   f_frame <- f_t1 %>%
-#     left_join(unselected_biomass) %>%
-#     #left_join(catch_vals) %>%
-#     mutate(mult = this_mult)
-#   
-#   # add to multispecies yield list
-#   ms_unselected_list[[i]] <- f_frame
-# }
-# 
-# ms_unselected_df <- bind_rows(ms_unselected_list)
-# 
-# ms_unselected_df <- ms_unselected_df %>%
-#   left_join(grps %>% select(Code, LongName), by = "Code") %>%
-#   mutate(experiment = "ms") %>%
-#   select(Code, LongName, experiment, f, biomass_mt)
-# 
-# # create empty list to fill with data frame for the yield curve
-# folder_path <- here("NOAA_Azure","results","pre-processing",this_job,"results")
-# # list the results files
-# results_list <- list.files(folder_path, full.names = T)
-# 
-# ss_unselected_list <- list()
-# for(i in 1:length(results_list)){ # TODO: turn all of these into a function with a few args (e.g., fished, unselected, top preds, ms, ss, etc.)
-#   
-#   print(paste("Doing",i))
-#   
-#   # load results
-#   this_result <- readRDS(results_list[i])
-#   
-#   # this idx - CAREFUL! This is not the same as i because of alphabetical sorting of the reuslts files
-#   this_idx <- as.numeric(names(this_result))
-#   
-#   # first identify the species and the level of fishing for this run. These are unrelated from runname
-#   sp <- f_lookup %>% filter(idx == this_idx) %>% pull(species)
-#   fidx <- f_lookup %>% filter(idx == this_idx) %>% pull(fidx)
-#   
-#   # rename the result object in the list to avoid problems with indexing
-#   names(this_result) <- "res"
-#   
-#   # extract tables from results
-#   biomage <- this_result$res[[paste0("biomage_",this_idx)]]
-#   catch <- this_result$res[[paste0("catch_",this_idx)]]
-#   
-#   # now extract data
-#   # SSB to plot and report in tables
-#   unselected_biomass <- biomage %>% 
-#     slice_tail(n = 5) %>% # use last xxx years
-#     summarise(across(-"Time", ~ mean(.x, na.rm = TRUE))) %>%
-#     ungroup() %>%
-#     pivot_longer(everything(), names_to = 'Code.Age', values_to = 'biomass_mt') %>%
-#     separate_wider_delim(Code.Age, delim = '.', names = c('Code', 'Age')) %>%
-#     filter(Code == sp) %>%
-#     left_join(selex, by = 'Code') %>%
-#     mutate(idx = as.numeric(Age) - as.numeric(age_class_selex)) %>%
-#     filter(is.na(idx) | idx < 0) %>%
-#     group_by(Code) %>%
-#     summarise(biomass_mt = sum(biomass_mt)) %>%
-#     ungroup() %>%
-#     pull(biomass_mt)
-#   
-#   # # calculate realized F after 1 year of data
-#   # # get initial biomass for the selected age classes
-#   biom_age_t1 <- biomage %>% 
-#     filter(Time == 0) %>% 
-#     pivot_longer(-Time, names_to = 'Code.Age', values_to = 'biomass') %>%
-#     separate_wider_delim(Code.Age, delim = '.', names = c('Code', 'Age')) %>%
-#     left_join(selex, by = 'Code') %>%
-#     mutate(idx = as.numeric(Age) - as.numeric(age_class_selex)) %>%
-#     filter(is.na(idx) | idx >= 0) %>%
-#     group_by(Code) %>%
-#     summarise(biomass = sum(biomass)) %>%
-#     ungroup() %>% 
-#     filter(Code == sp)
-#   # 
-#   # # catch (one time step after biomass: how much did we catch in this time?)
-#   catch_t1 <- catch %>% 
-#     select(Time, all_of(sp)) %>% 
-#     filter(Time == 365) %>%
-#     summarise(across(everything(), ~ mean(.x, na.rm = TRUE))) %>%
-#     pivot_longer(-Time, names_to = 'Code', values_to = 'catch') %>%
-#     select(-Time)
-#   # 
-#   # # calc realized f
-#   f_t1 <- biom_age_t1 %>% left_join(catch_t1) %>%
-#     mutate(exp_rate = catch/biomass,
-#            f = -log(1-exp_rate),
-#            fidx = fidx) %>% # need this for joining later on
-#     select(Code, f, fidx) 
-#   
-#   # # bind all
-#   f_frame <- f_t1 %>%
-#     mutate(biomass = unselected_biomass)#,
-#   #catch = catch_val)
-#   
-#   ss_unselected_list[[i]] <- f_frame
-#   
-#   # # write out to be then brought together with all other runs
-#   # write.csv(f_frame, paste(outdir,paste(sp,fidx,'f.csv',sep='_'), sep = "/"), row.names = F)
-#   
-# }
-# 
-# ss_unselected_df <- bind_rows(ss_unselected_list) %>%
-#   left_join(grps %>% select(Code, LongName), by= "Code") %>%
-#   mutate(experiment = "ss") %>%
-#   select(Code, LongName, experiment, f, biomass) %>%
-#   rename(biomass_mt = biomass)
-# 
-# # plot
-# unselected_plot <- ms_unselected_df %>%
-#   rbind(ss_unselected_df) %>%
-#   mutate(experiment = ifelse(experiment == "ms", "Multispecies", "Single-species")) %>%
-#   ggplot(aes(x = f, y = biomass_mt/1000, color = experiment))+
-#   geom_line()+
-#   geom_point(size = 2)+
-#   scale_color_viridis_d(begin = 0.2, end = 0.8)+
-#   geom_vline(data = fmsy, aes(xintercept = FMSY, group = LongName), linetype = 'dashed', color = 'orange')+
-#   geom_vline(data = atlantis_fmsy, aes(xintercept = atlantis_fmsy, group = LongName), linetype = 'dashed', color = 'blue')+
-#   theme_bw()+
-#   scale_y_continuous(limits = c(0, NA))+
-#   labs(x = 'F as perceived by the model', y = '1000\'s of tons')+
-#   facet_wrap(~LongName, scales = 'free', ncol = 3)+
-#   theme(strip.text.y = element_text(angle=0))
-# unselected_plot
-# 
-# ggsave(paste0("NOAA_Azure/results/figures/",batch,"/unselected.png"), unselected_plot, width = 8, height = 6)
-# 
-# # save the file as a csv to compare it to other runs
-# write.csv(ms_unselected_df %>% mutate(batch = batch), 
-#           paste0('NOAA_Azure/results/for_comp/',batch,'_unselected.csv'), row.names = F)
-# 
-# # In the MS scenario, the biomass of the unselected age classes is in general higher across the board. 
-# # One possible explanation is that their adult predators are getting fished out
-# # This does not really hold if we look at their biomass, which is not lower than in the ss runs
-# # So, in the MS runs we have higher biomass and higher catches across all T3 species.
-# # In other words, when we fish a stock at FMSY, if we fish all stocks at FMSY we get more of all of them
-# # Since they can't all be winners, who is losing?
-# # look at top predators and forage fish across the ms runs
-# 
 
 
 
