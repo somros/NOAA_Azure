@@ -450,7 +450,12 @@ atlantis_oy <- ss_yield_long_fidx %>%
 # discount by 8%
 atlantis_oy <- atlantis_oy - (atlantis_oy * 0.08)
 
+###################
+###################
+# TODO: if presenting this result, need to discount it for Canada!!!
 # the result is 597469.1 mt, much lower than 800,000
+###################
+###################
 # This means that MSY calculated in Atlantis are lower than MSY from the assessments in 1987
 # This is fine. It means that stocks are not as productive in Atlantis
 # A caveat is that F on the nontarget species is at 1/4 FOFL, so this OY accounts for other stocks at a very specific state
@@ -526,7 +531,8 @@ catch_df_long <- catch_df %>%
 source("NOAA_Azure/code/nc_for_scaling.R")
 # catch_scalars <- bind_rows(lapply(f35_nc, get_catch_ak_scalar)) # this is very slow, it can be optimized in many ways
 # save this as it takes so long to produce
-write.csv(catch_scalars, "NOAA_Azure/data/catch_scalars.csv", row.names = F)
+# write.csv(catch_scalars, "NOAA_Azure/data/catch_scalars.csv", row.names = F)
+catch_scalars <- read.csv("NOAA_Azure/data/catch_scalars.csv")
 
 # view, is the scalar changing across runs?
 # catch_scalars %>%
@@ -818,14 +824,14 @@ ms_other_df <- ms_other_df %>%
 
 ms_other_df <- ms_other_df %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
-                          "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks",
+                          "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks",
                           "MFMSY varying for all stocks"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 ms_other_df$Fishing <- factor(ms_other_df$Fishing,
                               levels = c("MFMSY varying for all stocks",
-                                         "Low F on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                         "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # handle long names for the facet for predators, they are too wide
 ms_other_df$LongNamePlot <- gsub(" ","\n",ms_other_df$LongName)
@@ -842,7 +848,7 @@ other_plot_top <- ms_other_df %>%
   geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
   theme_bw()+
   labs(x = expression(MF[MSY] ~ "multiplier"), y = "Change in biomass from unfished")+
-  guides(linetype=guide_legend(order=1), color=guide_legend(order=2))+
+  guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
   facet_wrap(~LongNamePlot)
 
 other_plot_forage <- ms_other_df %>%
@@ -856,11 +862,11 @@ other_plot_forage <- ms_other_df %>%
   geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
   theme_bw()+
   labs(x = expression(MF[MSY] ~ "multiplier"), y = "Change in biomass from unfished")+
-  guides(linetype=guide_legend(order=1), color=guide_legend(order=2))+
+  guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
   facet_wrap(~LongName)
 
-# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top.png"), other_plot_top, width = 7, height = 6)
-# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage.png"), other_plot_forage, width = 7, height = 4)
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top.png"), other_plot_top, width = 7, height = 6)
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage.png"), other_plot_forage, width = 7, height = 4)
 
 # get max changes
 max_change <- ms_other_df %>%
@@ -868,7 +874,6 @@ max_change <- ms_other_df %>%
   group_by(run, Code) %>%
   slice_max(biomchange) %>%
   select(run, Code, biomchange)
-  
 
 # Numbers at age from nc files --------------------------------------------
 
