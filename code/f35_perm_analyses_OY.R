@@ -713,6 +713,68 @@ ms_vs_ss_plot_sum <- ms_vs_ss_interp %>%
 
 # ggsave(paste0('NOAA_Azure/results/figures/oy_paper/catch',t,'_comparison_aggregate.png'), ms_vs_ss_plot_sum, width = 6, height = 7)
 
+# create a plot akin to Walters et al. (2005) Fig. 3, except we do not organize it by TL for now
+# My interpretation is that these ratios are calculated between catch at 1*SS FMSY and 1*MFMSY
+# single-species MSY (catch at FMSY)
+ss_msy <- f_df %>%
+  mutate(experiment = "ss") %>%
+  select(Code, LongName, f, fidx, experiment, type, mt) %>%
+  filter(type == "Catch") %>%
+  group_by(Code, LongName) %>%
+  slice_max(mt) %>%
+  ungroup() %>%
+  select(LongName, mt) %>%
+  rename(mt_ss = mt)
+
+# this is the scenario where ATF is kept at low fishing pressure, all other groups are varied
+ms_msy <- catch_df %>%
+  pivot_longer(-c(run, mult, idx), names_to = "Code", values_to = "mt") %>%
+  group_by(run, mult) %>%
+  mutate(total_yield = sum(mt),
+         prop = mt / total_yield) %>%
+  ungroup() %>%
+  left_join(grps %>% select(Code, LongName), by = "Code") %>%
+  left_join(catch_scalars %>% 
+              left_join(grps %>% 
+                          dplyr::select(Code, Name))) %>%
+  mutate(mt_ak = mt * ak_prop) %>%
+  filter(mult == 1, run == "atf") %>%
+  select(LongName, mt_ak) %>%
+  rename(mt_ms = mt_ak)
+
+ms_vs_ss_walters <- ss_msy %>%
+  left_join(ms_msy) %>%
+  mutate(ratio = mt_ss / mt_ms)
+
+# reorder levels
+ms_vs_ss_walters$LongNamePlot <- gsub(" - ", "\n", ms_vs_ss_walters$LongName)
+ms_vs_ss_walters$LongNamePlot <- reorder(ms_vs_ss_walters$LongNamePlot, ms_vs_ss_walters$ratio)
+
+# plot
+walters_plot <- ms_vs_ss_walters %>%
+  filter(LongName != "Arrowtooth flounder") %>%
+  ggplot(aes(x=LongNamePlot, y=ratio)) + 
+  geom_hline(yintercept = 1, color = 'grey', linetype = 'dashed') +
+  geom_point(stat='identity', fill="black", size=3)  +
+  geom_segment(aes(y = 1,
+                   x = LongNamePlot,
+                   yend = ratio,
+                   xend = LongNamePlot),
+               linewidth = 1.5) +
+  theme_bw() +
+  labs(x = '', y = 'Single-species MSY / multispecies MSY') + 
+  guides(color="none") +
+  coord_flip()+
+  theme(strip.text.y = element_text(angle = 0))
+
+
+# Comparing SS to (either) MS scenario:
+# Generally, the less top/down control you have, the better you do in SS simulations
+# This actually fits really well with existing literature
+# SS wins if decoupled
+# 
+ggsave("NOAA_Azure/results/figures/oy_paper/walters_plot_atf.png", walters_plot, width = 5.5, height = 4)
+
 # Below the target of 35% --------------------------------------------------------------
 
 # How many stocks are below 35% B0 for each scenario?
@@ -865,8 +927,8 @@ other_plot_forage <- ms_other_df %>%
   guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
   facet_wrap(~LongName)
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top.png"), other_plot_top, width = 7, height = 6)
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage.png"), other_plot_forage, width = 7, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top.png"), other_plot_top, width = 7, height = 6)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage.png"), other_plot_forage, width = 7, height = 4)
 
 # get max changes
 max_change <- ms_other_df %>%
