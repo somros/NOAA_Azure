@@ -716,6 +716,7 @@ ms_vs_ss_plot_sum <- ms_vs_ss_interp %>%
 # create a plot akin to Walters et al. (2005) Fig. 3, except we do not organize it by TL for now
 # My interpretation is that these ratios are calculated between catch at 1*SS FMSY and 1*MFMSY
 # single-species MSY (catch at FMSY)
+# Let's not rescale Alaska vs Canad, treat this as model-wide MSY
 ss_msy <- f_df %>%
   mutate(experiment = "ss") %>%
   select(Code, LongName, f, fidx, experiment, type, mt) %>%
@@ -734,46 +735,156 @@ ms_msy <- catch_df %>%
          prop = mt / total_yield) %>%
   ungroup() %>%
   left_join(grps %>% select(Code, LongName), by = "Code") %>%
-  left_join(catch_scalars %>% 
-              left_join(grps %>% 
-                          dplyr::select(Code, Name))) %>%
-  mutate(mt_ak = mt * ak_prop) %>%
-  filter(mult == 1, run == "atf") %>%
-  select(LongName, mt_ak) %>%
-  rename(mt_ms = mt_ak)
+  # left_join(catch_scalars %>% 
+  #             left_join(grps %>% 
+  #                         dplyr::select(Code, Name))) %>%
+  # mutate(mt_ak = mt * ak_prop) %>%
+  filter(mult == 1, run %in% c("base","atf")) %>%
+  select(LongName, run, mt) %>%
+  rename(mt_ms = mt)
 
-ms_vs_ss_walters <- ss_msy %>%
-  left_join(ms_msy) %>%
-  mutate(ratio = mt_ss / mt_ms)
+ms_vs_ss_walters <- ms_msy %>%
+  left_join(ss_msy) %>%
+  mutate(ratio = mt_ms / mt_ss)
 
 # reorder levels
-ms_vs_ss_walters$LongNamePlot <- gsub(" - ", "\n", ms_vs_ss_walters$LongName)
-ms_vs_ss_walters$LongNamePlot <- reorder(ms_vs_ss_walters$LongNamePlot, ms_vs_ss_walters$ratio)
+#ms_vs_ss_walters$LongNamePlot <- gsub(" - ", "\n", ms_vs_ss_walters$LongName)
+# ms_vs_ss_walters$LongNamePlot <- reorder(ms_vs_ss_walters$LongNamePlot, -ms_vs_ss_walters$ratio)
+levs <- levels(factor(reorder(ms_vs_ss_walters[ms_vs_ss_walters$run=="base",]$LongName, 
+                              -ms_vs_ss_walters[ms_vs_ss_walters$run=="base",]$ratio)))
+
+ms_vs_ss_walters$LongName <- factor(ms_vs_ss_walters$LongName, levels = levs)
+
+# rename runs
+ms_vs_ss_walters <- ms_vs_ss_walters %>%
+  mutate(Fishing = ifelse(run == "atf", 
+                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks", 
+                                     "MFMSY varying for all stocks"))
+
+# 
+ms_vs_ss_walters$Fishing <- factor(ms_vs_ss_walters$Fishing,
+                          levels = c("MFMSY varying for all stocks",
+                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
 
 # plot
 walters_plot <- ms_vs_ss_walters %>%
-  filter(LongName != "Arrowtooth flounder") %>%
-  ggplot(aes(x=LongNamePlot, y=ratio)) + 
+  mutate(ratio = ifelse(run == "atf" & LongName == "Arrowtooth flounder", NA, ratio)) %>%
+  #filter(LongName != "Arrowtooth flounder") %>%
+  ggplot(aes(x=LongName, y=ratio)) + 
   geom_hline(yintercept = 1, color = 'grey', linetype = 'dashed') +
   geom_point(stat='identity', fill="black", size=3)  +
   geom_segment(aes(y = 1,
-                   x = LongNamePlot,
+                   x = LongName,
                    yend = ratio,
-                   xend = LongNamePlot),
-               linewidth = 1.5) +
+                   xend = LongName),
+               linewidth = 1) +
   theme_bw() +
-  labs(x = '', y = 'Single-species MSY / multispecies MSY') + 
+  labs(x = '', y = 'Multispecies MSY / single-species MSY') + 
   guides(color="none") +
-  coord_flip()+
-  theme(strip.text.y = element_text(angle = 0))
-
+  # coord_flip()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  facet_wrap(~Fishing, nrow = 2)
 
 # Comparing SS to (either) MS scenario:
-# Generally, the less top/down control you have, the better you do in SS simulations
-# This actually fits really well with existing literature
-# SS wins if decoupled
+# Across all groups, MS MSY is higher than SS MSY.
+# Biggest differences for groups that are more top-down controlled (pollock, FHS, Cod, FFS)
+# Groups that have smallest difference are higher trophic levels or groups that are parameterized to be less predated upon
+# It makes sense though that there will always be less predators in the MS runs
+# This shows that it varies by species, but there is a strong top-down control in the system, which is cool
+
+ggsave("NOAA_Azure/results/figures/oy_paper/walters_plot.png", walters_plot, width = 5, height = 7)
+
+# Test: Color by M
+# Expectation: the higher M, the lower the TL
+# Caveat: we cannot do M2 vs M1 and we do have mL and mQ in the model so this is tainted
+# We need to choose whether M comes from the MS or SS runs
+# I think from MS runs for mult == 1 (i.e. fishing at MFMSY)
+# only loop through idx we need: base and atf runs, mult == 1.0
+# these_idx <- oy_key %>% filter(run == "base", mult == 1) %>% pull(idx)
 # 
-ggsave("NOAA_Azure/results/figures/oy_paper/walters_plot_atf.png", walters_plot, width = 5.5, height = 4)
+# ms_m_list <- list()
+# for(i in these_idx){
+#   
+#   print(paste("Doing", f35_results[i]))
+#   
+#   # grab the index from the file name
+#   this_idx <- as.numeric(gsub("-result.rds", "", gsub("NOAA.*2/results/", "", f35_results[i])))
+#   
+#   # run information based on the index
+#   this_run <- oy_key %>% filter(idx == this_idx) %>% pull(run)
+#   this_mult <- oy_key %>% filter(idx == this_idx) %>% pull(mult)
+#   
+#   # extract tables from results
+#   this_result <- readRDS(f35_results[i])
+#   # the packaging of the RDS object was different between the eScience runs and the batch (doAzureParallel) runs
+#   if(length(this_result)==1) {
+#     this_result <- this_result[[1]]
+#   }
+#   
+#   mort <- this_result[[4]]
+#   
+#   # shape long, split names, filter, add LongName, handle time (last 5-year avg)
+#   mort_long <- mort %>%
+#     pivot_longer(-Time) %>%
+#     separate(name, into = c("Code", "Type"), sep = "\\.") %>%
+#     filter(Code %in% t3_fg) %>%
+#     mutate(Time = Time / 365) %>%
+#     filter(Time %in% ((max(Time)-5):max(Time))) %>%
+#     group_by(Code, Type) %>%
+#     summarise(value = mean(value)) %>%
+#     ungroup() %>%
+#     left_join(grps %>% select(Code, LongName))
+#   
+#   # now get proportions M/F, so that we multiply F by it and get M
+#   mort_prop <- mort_long %>%
+#     filter(Type == "M") %>%
+#     left_join(mort_long %>%
+#                 filter(Type == "F") %>%
+#                 select(Code, value), by = "Code") %>%
+#     mutate(prop = value.x / value.y) %>%
+#     select(Code, prop)
+#   
+#   # bring in f, as it's needed to get M (but these change between species?)
+#   # this should be the realized F, instead of the input F35 vector
+#   m_frame <- ms_yield_df %>%
+#     filter(run == "base", mult == 1) %>%
+#     left_join(mort_prop) %>%
+#     mutate(m_at_fmsy = f * prop) %>%
+#     select(Code, m_at_fmsy) %>%
+#     mutate(run = this_run)
+#   
+#   # add to multispecies m list
+#   ms_m_list[[i]] <- m_frame
+# }
+# 
+# ms_m_df <- bind_rows(ms_m_list) %>%
+#   select(-run) %>%
+#   left_join(grps %>% select(Code, LongName))
+
+# # redo the plot with colors
+# walters_plot_m <- ms_vs_ss_walters %>%
+#   left_join(ms_m_df) %>%
+#   #filter(LongName != "Arrowtooth flounder") %>%
+#   ggplot(aes(x=LongNamePlot, y=ratio, color = m_at_fmsy)) +
+#   geom_hline(yintercept = 1, color = 'grey', linetype = 'dashed') +
+#   geom_point(stat='identity', fill="black", size=3)  +
+#   scale_color_viridis()+
+#   geom_segment(aes(y = 1,
+#                    x = LongNamePlot,
+#                    yend = ratio,
+#                    xend = LongNamePlot),
+#                linewidth = 1.5) +
+#   theme_bw() +
+#   labs(x = '', y = 'Single-species MSY / multispecies MSY') +
+#   coord_flip()+
+#   theme(strip.text.y = element_text(angle = 0))
+
+# This sounds like a good idea, but it is not viable because:
+# 1. There are mL and mQ components (you'd need the M1-M2 output)
+# 2. I do not know that I trust the M output from Atlantis 
+# 3. People are going to see M=1 for POL and not like it
+# 4. What the hell is going on with ATF??
+# Scratch this, it does not work
 
 # Below the target of 35% --------------------------------------------------------------
 
