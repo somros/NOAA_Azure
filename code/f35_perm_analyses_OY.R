@@ -611,7 +611,7 @@ global_yield_ms <- catch_df_long_ak %>%
   facet_grid(Climate~`F on\narrowtooth`)
 global_yield_ms
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms_AK.png"), global_yield_ms, width = 6.1, height = 7)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms_AK.png"), global_yield_ms, width = 6.1, height = 7)
 
 # test <- catch_df_long %>% filter(run == "base")
 # test %>% group_by(mult) %>% summarize(mt = sum(mt))
@@ -784,15 +784,26 @@ levs <- levels(factor(reorder(ms_vs_ss_walters[ms_vs_ss_walters$run=="base",]$Lo
 ms_vs_ss_walters$LongName <- factor(ms_vs_ss_walters$LongName, levels = levs)
 
 # rename runs
+# ms_vs_ss_walters <- ms_vs_ss_walters %>%
+#   mutate(Fishing = ifelse(run == "atf", 
+#                                      "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks", 
+#                                      "MFMSY varying for all stocks"))
+# 
+# # 
+# ms_vs_ss_walters$Fishing <- factor(ms_vs_ss_walters$Fishing,
+#                           levels = c("MFMSY varying for all stocks",
+#                                      "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+
+# for paper
 ms_vs_ss_walters <- ms_vs_ss_walters %>%
   mutate(Fishing = ifelse(run == "atf", 
-                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks", 
-                                     "MFMSY varying for all stocks"))
+                          "Market constraints on arrowtooth fishing",
+                          "MFMSY varies for all focal groups"))
 
 # 
 ms_vs_ss_walters$Fishing <- factor(ms_vs_ss_walters$Fishing,
-                          levels = c("MFMSY varying for all stocks",
-                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                   levels = c("MFMSY varies for all focal groups",
+                                              "Market constraints on arrowtooth fishing"))
 
 # plot
 walters_plot <- ms_vs_ss_walters %>%
@@ -807,7 +818,7 @@ walters_plot <- ms_vs_ss_walters %>%
                    xend = LongName),
                linewidth = 1) +
   theme_bw() +
-  labs(x = '', y = 'Multispecies MSY / single-species MSY') + 
+  labs(x = '', y = 'Step 2 MSY / Step 1 MSY') + 
   guides(color="none") +
   # coord_flip()+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))+
@@ -933,16 +944,28 @@ below_target <- ms_yield_long %>%
 
 # add scenario information
 # pretty verbose for WFC now
+# below_target <- below_target %>%
+#   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), 
+#                                      "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks", 
+#                                      "MFMSY varying for all stocks"),
+#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
+# 
+# # reorder ATF F
+# below_target$`F on\narrowtooth` <- factor(below_target$`F on\narrowtooth`, 
+#                                            levels = c("MFMSY varying for all stocks",
+#                                                       "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+
+# for paper
 below_target <- below_target %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), 
-                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks", 
-                                     "MFMSY varying for all stocks"),
+                                     "Market constraints on arrowtooth fishing",
+                                     "MFMSY varies for all focal groups"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 below_target$`F on\narrowtooth` <- factor(below_target$`F on\narrowtooth`, 
-                                           levels = c("MFMSY varying for all stocks",
-                                                      "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                                          levels = c("MFMSY varies for all focal groups",
+                                                     "Market constraints on arrowtooth fishing"))
 
 p_below_target <- below_target %>%
   ggplot(aes(x = mult, y = n_below_target))+
@@ -954,7 +977,7 @@ p_below_target <- below_target %>%
   facet_grid(Climate~`F on\narrowtooth`)
 p_below_target
 
-# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/below_target.png"), p_below_target, width = 5.5, height = 4)
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/below_target.png"), p_below_target, width = 6, height = 4)
 
 # Diagnostics: top predators and forage fish ------------------------------
 
@@ -1067,7 +1090,7 @@ other_plot_top <- ms_other_df %>%
   geom_point()+
   #scale_color_manual(values = c("blue3", "red3"))+
   scale_color_viridis_d(begin = 0.2, end = 0.8)+
-  geom_hline(yintercept = 1, color = "grey", linetype = "dotted", linewidth = 1)+
+  #geom_hline(yintercept = 1, color = "grey", linetype = "dotted", linewidth = 1)+
   geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
   theme_bw()+
   labs(x = expression(MF[MSY] ~ "multiplier"), y = "Change in biomass from unfished")+
@@ -1081,14 +1104,14 @@ other_plot_forage <- ms_other_df %>%
   geom_point()+
   #scale_color_manual(values = c("blue3", "red3"))+
   scale_color_viridis_d(begin = 0.2, end = 0.8)+
-  geom_hline(yintercept = 1, color = "grey", linetype = "dotted", linewidth = 1)+
+  #geom_hline(yintercept = 1, color = "grey", linetype = "dotted", linewidth = 1)+
   geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
   theme_bw()+
   labs(x = expression(MF[MSY] ~ "multiplier"), y = "Change in biomass from unfished")+
   guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
   facet_wrap(~LongName)
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top.png"), other_plot_top, width = 7, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top.png"), other_plot_top, width = 7, height = 4)
 # ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage.png"), other_plot_forage, width = 7, height = 4)
 
 # get max changes
@@ -1205,16 +1228,28 @@ naa$LongNamePlot <- gsub(" ", "\n", naa$LongName)
 
 # add scenario information
 # pretty verbose for WFC now
+# naa <- naa %>%
+#   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"), 
+#                                      "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks", 
+#                                      "MFMSY varying for all stocks"),
+#          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
+# 
+# # reorder ATF F
+# naa$Fishing <- factor(naa$Fishing, 
+#                                           levels = c("MFMSY varying for all stocks",
+#                                                      "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+
 naa <- naa %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"), 
-                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks", 
-                                     "MFMSY varying for all stocks"),
+                          "Market constraints\non arrowtooth fishing",
+                          "MFMSY varies for\nall focal groups"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 naa$Fishing <- factor(naa$Fishing, 
-                                          levels = c("MFMSY varying for all stocks",
-                                                     "1/4 FOFL on arrowtooth flounder,\nMFMSY varying for all other stocks"))
+                      levels = c("MFMSY varies for\nall focal groups",
+                                 "Market constraints\non arrowtooth fishing"))
+
 
 # add column for age as factor
 naa$`Age class` <- factor(naa$age)
@@ -1247,21 +1282,21 @@ naa_plot2 <- naa %>%
 naa_plot2
 
 # make a figure
-# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_1.png'), naa_plot1, width = 7, height = 7)
-# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_2.png'), naa_plot2, width = 7, height = 7)
+ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_1.png'), naa_plot1, width = 7, height = 7)
+ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_2.png'), naa_plot2, width = 7, height = 7)
 
 # key groups
-naa_plot_ms <- naa %>%
-  filter(LongName %in% key_grps) %>%
-  ggplot(aes(x = mult, y = abun/1000000, color = `Age class`, linetype = Fishing))+
-  geom_line()+
-  geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
-  scale_color_viridis_d()+
-  theme_bw()+
-  labs(x = expression(F[MSY] ~ "multiplier"), y = 'Individuals (millions)')+
-  facet_grid2(LongNamePlot~Climate, scales = 'free')+
-  theme(strip.text.y = element_text(angle=0))
-naa_plot_ms
+# naa_plot_ms <- naa %>%
+#   filter(LongName %in% key_grps) %>%
+#   ggplot(aes(x = mult, y = abun/1000000, color = `Age class`, linetype = Fishing))+
+#   geom_line()+
+#   geom_vline(xintercept = 1, color = "black", linetype = "dotted")+
+#   scale_color_viridis_d()+
+#   theme_bw()+
+#   labs(x = expression(F[MSY] ~ "multiplier"), y = 'Individuals (millions)')+
+#   facet_grid2(LongNamePlot~Climate, scales = 'free')+
+#   theme(strip.text.y = element_text(angle=0))
+# naa_plot_ms
 
 # ggsave(paste0("NOAA_Azure/results/figures/oy_paper/NAA_ms.png"), naa_plot_ms, width = 8, height = 6.5)
 

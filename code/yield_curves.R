@@ -162,7 +162,7 @@ f_plot
 
 # make a figure
 t <- format(Sys.time(),'%Y-%m-%d %H-%M-%S')
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/yield_curves',t,'.png'), f_plot, width = 7, height = 9)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/yield_curves',t,'.png'), f_plot, width = 7, height = 9)
 
 # make figures for OY paper
 # plot
@@ -214,8 +214,8 @@ f_plot2 <- f_df_ms %>%
 
 # make a figure
 # t <- format(Sys.time(),'%Y-%m-%d %H-%M-%S')
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/yield_curves',t,'_OY_1.png'), f_plot1, width = 7, height = 7)
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/yield_curves',t,'_OY_2.png'), f_plot2, width = 7, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/yield_curves',t,'_OY_1.png'), f_plot1, width = 7, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/yield_curves',t,'_OY_2.png'), f_plot2, width = 7, height = 7)
 
 # # make a figure for the OY paper
 # focus on key stocks: POL, COD, ATF, HAL, SBF, POP, FFS
@@ -236,7 +236,7 @@ p_ms <- f_df_ms %>%
   labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')+
   facet_grid2(LongNamePlot~type, scales = 'free', independent = 'all')+
   theme(strip.text.y = element_text(angle=0))
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biom_catch_key_stocks.png'), p_ms, width = 7, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/biom_catch_key_stocks.png'), p_ms, width = 7, height = 7)
 
 # make simple catch curves for methods figure
 forplot <- "Pacific halibut"
@@ -249,7 +249,7 @@ tt <- f_df_ms %>%
   theme_bw()+
   scale_y_continuous(limits = c(0, NA))+
   labs(x = 'Fishing mortality (F)', y = '1000\'s of tons')
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/",forplot,"_methods.png"),tt,width=3, height = 2)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/",forplot,"_methods.png"),tt,width=3, height = 2)
 
 
 # Yield functions ---------------------------------------------------------
@@ -310,9 +310,9 @@ yield_func_plot <- yield_func %>%
   scale_x_reverse()+
   geom_text(data = annotations,
             aes(x = 0.5, y = 0.5, hjust=0.5, vjust=1,
-                label=paste0('Depletion(%)=', round(depletion,2),
+                label=paste0('D(%)=', round(depletion,2),
                              '\n',
-                             'Yield fraction(%)=', round(yfrac, 2),
+                             'YF(%)=', round(yfrac, 2),
                              '\n',
                              'SSB(1000mt)=', round(ssb, 2),
                              '\n',
