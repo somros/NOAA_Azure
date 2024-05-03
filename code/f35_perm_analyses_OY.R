@@ -611,7 +611,7 @@ global_yield_ms <- catch_df_long_ak %>%
   facet_grid(Climate~`F on\narrowtooth`)
 global_yield_ms
 
-# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms_AK.png"), global_yield_ms, width = 6.1, height = 7)
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms_AK.png"), global_yield_ms, width = 6.1, height = 5)
 
 # test <- catch_df_long %>% filter(run == "base")
 # test %>% group_by(mult) %>% summarize(mt = sum(mt))
@@ -1032,12 +1032,20 @@ ms_other_df <- bind_rows(ms_other_list) %>%
   left_join(grps %>% select(Code, LongName), by = "Code")
 
 # get b0
-# note that 
-b0_other <- ms_other_df %>% filter(mult == 0) %>% dplyr::select(LongName, run, biomass_mt) %>% rename(b0 = biomass_mt)
+# should b0 be "dynamic", i.e. be on a run-by-run basis, or compare to the "base" scenario, or other?
+# dynamic
+# b0_other <- ms_other_df %>% filter(mult == 0) %>% dplyr::select(LongName, run, biomass_mt) %>% rename(b0 = biomass_mt)
+# 
+# ms_other_df <- ms_other_df %>%
+#   left_join(b0_other, by = c("LongName", "run")) %>%
+#   mutate(biomchange = biomass_mt / b0)
+
+# static to "base"
+b0_other <- ms_other_df %>% filter(mult == 0, run == "base") %>% dplyr::select(LongName, biomass_mt) %>% rename(b0 = biomass_mt)
 
 ms_other_df <- ms_other_df %>%
-  left_join(b0_other, by = c("LongName", "run")) %>%
-  mutate(biomchange = biomass_mt / b0)
+  left_join(b0_other, by = c("LongName")) %>%
+  mutate(biomchange = (biomass_mt - b0)/b0 * 100)
 
 # add factors for plot
 # ms_other_df <- ms_other_df %>%
@@ -1070,6 +1078,9 @@ ms_other_df$Fishing <- factor(ms_other_df$Fishing,
                               levels = c("MFMSY varies for\nall focal groups",
                                          "Market constraints\non arrowtooth fishing"))
 
+# handle dash
+ms_other_df$LongName <- gsub(" - "," ",ms_other_df$LongName)
+
 # handle long names for the facet for predators, they are too wide
 ms_other_df$LongNamePlot <- gsub(" ","\n",ms_other_df$LongName)
 
@@ -1079,7 +1090,12 @@ ms_other_df$LongNamePlot <- factor(ms_other_df$LongNamePlot, levels = c(
   "Other\npinnipeds",
   "Dolphins",
   "Seabirds\nsurface\nfish",
-  "Seabirds\ndiving\nfish"
+  "Seabirds\ndiving\nfish",
+  "Capelin",
+  "Sandlance",
+  "Pacific\nherring",
+  "Forage\nfish\nslope",
+  "Eulachon"
 ))
 
 # plot (separate top preds and forage)
@@ -1111,8 +1127,8 @@ other_plot_forage <- ms_other_df %>%
   guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
   facet_wrap(~LongName)
 
-# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top.png"), other_plot_top, width = 7, height = 4)
-# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage.png"), other_plot_forage, width = 7, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top_staticB0.png"), other_plot_top, width = 7, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage_staticB0.png"), other_plot_forage, width = 7, height = 4)
 
 # get max changes
 max_change <- ms_other_df %>%
@@ -1444,8 +1460,9 @@ waa_plot2
 # Also to produce a diet plot of sorts for arrowtooth for the supplement
 # This needs the dietcheck.txt output, which we do not have from all runs
 # if anything let this serve as future reminder that we should always produce that for a trophic model...
+this_run_no <- 39
 
-diet <- read.table("NOAA_Azure/results/diets/output_3DietCheck.txt", sep = " ", header = T)
+diet <- read.table(paste0("NOAA_Azure/results/diets/output_", this_run_no, "DietCheck.txt"), sep = " ", header = T)
 
 diet_long_stage <- diet %>%
    mutate(Time = Time / 365) %>%
@@ -1509,12 +1526,12 @@ for(i in 1:length(pred_codes)){
   
   if(age_type == "C") {
     p <- this_diet %>%
-      ggplot(aes(x = Cohort+1, y = Prop, fill = Prey_LongName))+
+      ggplot(aes(x = Cohort+1, y = Prop * 100, fill = Prey_LongName))+
       geom_bar(stat = 'identity', position = 'stack')+
       scale_x_continuous(breaks = 1:10)
   } else {
     p  <- this_diet %>%
-      ggplot(aes(x = Stage, y = Prop, fill = Prey_LongName), stat = 'identity', position = 'stack')+
+      ggplot(aes(x = Stage, y = Prop * 100, fill = Prey_LongName), stat = 'identity', position = 'stack')+
       geom_bar(stat = 'identity', position = 'stack')
   }
 
@@ -1524,8 +1541,254 @@ for(i in 1:length(pred_codes)){
     labs(x = '', y = "Diet preference (%)",
          fill = "Prey")
   
-  ggsave(paste0("NOAA_Azure/results/figures/oy_paper/diet_plots/", this_fg, "_", age_type, ".png"), p, width = 6, height = 5)
+  ggsave(paste0("NOAA_Azure/results/figures/oy_paper/diet_plots/", this_run_no, "/", this_fg, "_", age_type, ".png"), p, width = 6, height = 4.5)
 }
+
+
+# Diagnostics: between-run prey biomass -----------------------------------
+# The response of some predators, such as steller sea lions, is confusing in our scenarios
+# To get the full picture we need to compare prey biomasses as well
+# most importantly we need to make sure that we are not mixing up runs (yield plots seem to make sense so I don't think so)
+# For SSL, we have diet images for 39 vs 51
+# In both runs fishing mortality is high on groundfish, and FMSY varies on all focal stocks simultaneously
+# 3: as close to baseline as we have diet images for, at the moment
+# 13: cool. Highest F. FMSY varying on all stocks. SSL changing the most from unfished
+# 39: warm. Highest F. FMSY varying on all stocks. SSL changing less from unfished
+
+# SSL's main prey items:
+ssl_prey <- c("ATF","COD","POL","OCT","DFS","HER")
+
+biom_base <- readRDS(f35_results[3])[[2]] %>% mutate(run = "base")
+biom_warm <- readRDS(f35_results[13])[[2]] %>% mutate(run = "warm")
+biom_cool <- readRDS(f35_results[39])[[2]] %>% mutate(run = "cool")
+
+biom_all <- rbind(biom_base, biom_warm, biom_cool) %>%
+  mutate(Time = Time / 365) %>%
+  pivot_longer(cols = -c(Time, run), names_to = 'Code.Age', values_to = 'biomass_mt') %>%
+  separate(Code.Age, into = c('Code', 'Age'), sep = '\\.') %>%
+  group_by(Time, run, Code) %>% # get rid of cohorts
+  summarise(biomass_mt = sum(biomass_mt)) %>%
+  ungroup() %>%
+  filter(Code %in% c("SSL", ssl_prey))
+
+# view
+biom_all %>%
+  ggplot(aes(x = Time, y = biomass_mt, color = run))+
+  geom_line()+
+  theme_bw()+
+  facet_wrap(~Code, scales = "free")
+
+# I think that the real take-home here is that the "other" plots we have are somewhat misleading
+# What should B0 be? "Smaller" change for SSL in the warm climate does not mean that they do overall better
+# problem of suing static B0 is that then even at F=0 stock status changes across scenarios
+# Replotting Figs 7 and 8 with static B0 makes it more apparent that SSL was doing bad to begin with in the warm climate scenario, and the change with F is simply smaller
+# they do end up very close to each other in the end, corroboraitng that climate will not matter much for them and it's more food-driven
+# which is good!
+# maybe a better way of viewing this is simply biomass of these groups, instead of change
+# plot (separate top preds and forage)
+other_plot_top_abs <- ms_other_df %>%
+  filter(Code %in% c("KWT","KWR","DOL","SSL","PIN","BDF","BDI","BSF","BSI")) %>%
+  ggplot(aes(x = mult, y = biomass_mt, color = Climate, linetype = Fishing))+
+  geom_line()+
+  geom_point()+
+  scale_color_viridis_d(begin = 0.2, end = 0.8)+
+  geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
+  theme_bw()+
+  labs(x = expression(MF[MSY] ~ "multiplier"), y = "Biomass (mt)")+
+  guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
+  facet_wrap(~LongNamePlot, scales = "free")
+
+other_plot_forage_abs <- ms_other_df %>%
+  filter(Code %in% c("CAP","SAN","EUL","HER")) %>%
+  ggplot(aes(x = mult, y = biomass_mt, color = Climate, linetype = Fishing))+
+  geom_line()+
+  geom_point()+
+  scale_color_viridis_d(begin = 0.2, end = 0.8)+
+  geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
+  theme_bw()+
+  labs(x = expression(MF[MSY] ~ "multiplier"), y = "Biomass (mt)")+
+  guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
+  facet_wrap(~LongName, scales = "free")
+
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top_biomass.png"), other_plot_top_abs, width = 7, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage_biomass.png"), other_plot_forage_abs, width = 7, height = 4)
+  
+# what if we tied this to the diets?
+# one (bespoke) way of doing it may be:
+# for each predator, identify the main prey species from dietcheck (in baseline)
+# sum up total prey biomass
+# express changes from B0
+# could do the same for prey (but then pred species would be a lot, everyone eats CAP, but then changes should concern the most abundant ones)
+# This is qualitative, but it demonstrate a likely trophic link and its effects
+
+# for now, "baseline" is run 3, but replace with real base run when it's done (close enough)
+base_diet <- read.table(paste0("NOAA_Azure/results/diets/output_3DietCheck.txt"), sep = " ", header = T)
+
+# put in long format
+diet_long_other <- diet %>%
+  mutate(Time = Time / 365) %>%
+  filter(Time > 75 & Time <=80) %>% # 
+  group_by(Predator) %>%
+  summarise(across(KWT:DR, mean)) %>%
+  ungroup() %>%
+  pivot_longer(-Predator, names_to = 'Prey', values_to = 'Prop') %>%
+  left_join((grps %>% select(Code, Name, LongName)), by = c('Predator'='Code')) %>%
+  rename(Predator_Name = Name, Predator_LongName = LongName) %>%
+  select(-Predator) %>%
+  left_join((grps %>% select(Code, Name, LongName)), by = c('Prey'='Code')) %>%
+  rename(Prey_Name = Name, Prey_LongName = LongName) %>%
+  select(Prop, Predator_Name, Predator_LongName, Prey_Name, Prey_LongName)%>%
+  filter(Prop > 0.01)
+
+# for each top predator, which are the prey species?
+top_pred_names <- grps %>% filter(Code %in% top_preds) %>% pull(Name)
+
+prey_per_predator <- list()
+for(i in 1:length(top_pred_names)){
+  
+  this_top_pred <- top_pred_names[i]
+  fav_prey <- diet_long_other %>%
+    filter(Predator_Name == this_top_pred) %>%
+    pull(Prey_Name)
+  
+  # df
+  prey_per_predator[[i]] <- data.frame("Predator" = this_top_pred, "Prey" = fav_prey)
+  
+}
+prey_per_predator <- bind_rows(prey_per_predator)
+
+# for each prey, what are the predators?
+forage_names <- grps %>% filter(Code %in% forage) %>% pull(Name)
+
+predator_per_prey <- list()
+for(i in 1:length(forage_names)){
+  
+  this_forage <- forage_names[i]
+  fav_predator <- diet_long_other %>%
+    filter(Prey_Name == this_forage) %>%
+    pull(Predator_Name)
+  
+  # df
+  predator_per_prey[[i]] <- data.frame("Prey" = this_forage, "Predator" = fav_predator)
+  
+}
+predator_per_prey <- bind_rows(predator_per_prey)
+
+# now back to the biomasses
+# for each predator or prey, loop over the results to extract, for each run, the total terminal biomass of the group of prey (or predators)
+preds_and_prey <- c(top_pred_names, forage_names)
+
+diet_biomass <- lapply(1:length(preds_and_prey), function(i) {
+  # Create an inner list of length X
+  rep(list(NULL), length(f35_results))
+})
+
+for(i in 1:length(preds_and_prey)){
+  this_sp <- preds_and_prey[i]
+  
+  # identify the groups that are the favorite prey or predator
+  if(this_sp %in% top_pred_names){
+    diet_grps <- prey_per_predator %>% filter(Predator == this_sp) %>% pull(Prey)
+  } else {
+    diet_grps <- predator_per_prey %>% filter(Prey == this_sp) %>% pull(Predator)
+  }
+  
+  # bring in codes again as that's what the output works with...
+  diet_codes <- grps %>% filter(Name %in% diet_grps) %>% pull(Code)
+  
+  # now loop over reuslts
+  for(j in 1:length(f35_results)){
+    
+    print(paste("Doing", f35_results[j]))
+    
+    # grab the index from the file name
+    this_idx <- as.numeric(gsub("-result.rds", "", gsub("NOAA.*2/results/", "", f35_results[j])))
+    
+    # run information based on the index
+    this_run <- oy_key %>% filter(idx == this_idx) %>% pull(run)
+    this_mult <- oy_key %>% filter(idx == this_idx) %>% pull(mult)
+    
+    # extract tables from results
+    this_result <- readRDS(f35_results[j])
+    # the packaging of the RDS object was different between the eScience runs and the batch (doAzureParallel) runs
+    if(length(this_result)==1) {
+      this_result <- this_result[[1]]
+    }
+    
+    biomage <- this_result[[2]]
+    
+    # now extract data
+    # SSB to plot and report in tables
+    this_diet_biomass <- biomage %>% 
+      slice_tail(n = 5) %>% # use last xxx years
+      summarise(across(-"Time", ~ mean(.x, na.rm = TRUE))) %>%
+      ungroup() %>%
+      pivot_longer(everything(), names_to = 'Code.Age', values_to = 'biomass_mt') %>%
+      separate(Code.Age, into = c('Code', 'Age'), sep = '\\.') %>%
+      filter(Code %in% diet_codes) %>%
+      #group_by(Code) %>%
+      summarise(biomass_of_prey_or_pred = sum(biomass_mt)) %>%
+      #ungroup() %>%
+      mutate(Name = this_sp, run = this_run, mult = this_mult)
+    
+    # add to list
+    diet_biomass[[i]][[j]] <- this_diet_biomass
+    
+  }
+  
+  diet_biomass[[i]] <- bind_rows(diet_biomass[[i]])
+  
+}
+
+diet_biomass <- bind_rows(diet_biomass)
+
+# now need to rescale to b0, where b0 is for Base conditions under no fishing (good luck explaining all this in words)
+b0_for_diets <- diet_biomass %>% filter(mult == 0) %>% dplyr::select(Name, run, biomass_of_prey_or_pred) %>% rename(b0 = biomass_of_prey_or_pred)
+  
+diet_biomass_scalars <- diet_biomass %>%
+  left_join(b0_for_diets, by = c("Name", "run")) %>%
+  mutate(scalar = (biomass_of_prey_or_pred - b0)/b0*100) %>%
+  select(Name, run, mult, scalar) %>%
+  left_join(grps %>% select(Name, LongName))
+
+# fix dash
+diet_biomass_scalars$LongName <- gsub(" - ", " ", diet_biomass_scalars$LongName)
+
+# now join this to the ms_other_df frame
+  
+ms_other_df_diet <- ms_other_df %>%
+  left_join(diet_biomass_scalars, by = c("LongName","run","mult"))
+
+# now plot
+other_plot_top_diets <- ms_other_df_diet %>%
+  filter(Code %in% c("DOL","SSL","PIN","BDF","BSF")) %>%
+  ggplot(aes(x = mult, y = biomass_mt / 1000, fill = scalar, shape = Fishing))+
+  geom_point(color = "black", size = 3)+
+  scale_shape_manual(values = c(21,24))+
+  colorspace::scale_fill_continuous_divergingx(palette = 'PRGn', mid = 0) + 
+  geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
+  theme_bw()+
+  labs(x = expression(MF[MSY] ~ "multiplier"), y = "Biomass (1000 mt)", fill = "Change in total prey\nbiomass from unfished (%)")+
+  #guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
+  facet_grid2(LongNamePlot~Climate, scales = 'free')+
+  theme(strip.text.y = element_text(angle=0))
+
+other_plot_forage_diets <- ms_other_df_diet %>%
+  filter(Code %in% c("CAP","SAN","HER","FOS","EUL")) %>%
+  ggplot(aes(x = mult, y = biomass_mt / 1000, fill = scalar, shape = Fishing))+
+  geom_point(color = "black", size = 3)+
+  scale_shape_manual(values = c(21,24))+
+  colorspace::scale_fill_continuous_divergingx(palette = 'PRGn', mid = 0) + 
+  geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
+  theme_bw()+
+  labs(x = expression(MF[MSY] ~ "multiplier"), y = "Biomass (1000 mt)", fill = "Change in total predator\nbiomass from unfished (%)")+
+  #guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
+  facet_grid2(LongNamePlot~Climate, scales = 'free')+
+  theme(strip.text.y = element_text(angle=0))
+
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top_diets.png"), other_plot_top_diets, width = 7, height = 4)
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage_diets.png"), other_plot_forage_diets, width = 7, height = 4)
+
 
 # # Diagnostics: M -----------------------------------------------------------------------
 # 
