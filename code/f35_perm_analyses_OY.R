@@ -325,7 +325,7 @@ ymax$type <- "Catch"
 #for paper
 to_plot <- to_plot %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
-                          "Market constraints\non arrowtooth fishing",
+                          "Arrowtooth\nunderexploitation",
                           "MFMSY varies for\nall focal groups"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
@@ -334,7 +334,7 @@ to_plot <- to_plot %>%
 #          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 ymax <- ymax %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
-                          "Market constraints\non arrowtooth fishing",
+                          "Arrowtooth\nunderexploitation",
                           "MFMSY varies for\nall focal groups"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
@@ -347,10 +347,10 @@ ymax <- ymax %>%
 #                                              "Fixed (1/4 FOFL)"))
 to_plot$Fishing <- factor(to_plot$Fishing,
                           levels = c("MFMSY varies for\nall focal groups",
-                                     "Market constraints\non arrowtooth fishing"))
+                                     "Arrowtooth\nunderexploitation"))
 ymax$Fishing <- factor(ymax$Fishing,
-                          levels = c("MFMSY varies for\nall focal groups",
-                                     "Market constraints\non arrowtooth fishing"))
+                       levels = c("MFMSY varies for\nall focal groups",
+                                  "Arrowtooth\nunderexploitation"))
 
 # make figures for slides (break into two columns)
 # plot
@@ -399,7 +399,7 @@ f_plot_ms <- to_plot %>%
   scale_color_viridis_d(begin = 0.2, end = 0.8)+
   geom_vline(data = ymax %>% 
                filter(LongName %in% key_grps) %>% 
-               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "Market constraints\non arrowtooth fishing")), 
+               filter(!(LongNamePlot == "Arrowtooth\nflounder" & Fishing == "Arrowtooth\nunderexploitation")), 
              aes(xintercept = f, color = Climate, linetype = Fishing))+
   theme_bw()+
   scale_y_continuous(limits = c(0, NA))+
@@ -563,7 +563,7 @@ catch_df_long_ak <- catch_df_long %>%
               left_join(grps %>% 
                           dplyr::select(Code, Name))) %>%
   mutate(mt_ak = mt * ak_prop)
-  
+
 # add scenario information
 # pretty verbose for WFC now
 # catch_df_long_ak <- catch_df_long_ak %>%
@@ -580,14 +580,14 @@ catch_df_long_ak <- catch_df_long %>%
 # for paper
 catch_df_long_ak <- catch_df_long_ak %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"),
-                                     "Market constraints on arrowtooth fishing",
+                                     "Arrowtooth underexploitation",
                                      "MFMSY varies for all focal groups"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 catch_df_long_ak$`F on\narrowtooth` <- factor(catch_df_long_ak$`F on\narrowtooth`,
-                                           levels = c("MFMSY varies for all focal groups",
-                                                      "Market constraints on arrowtooth fishing"))
+                                              levels = c("MFMSY varies for all focal groups",
+                                                         "Arrowtooth underexploitation"))
 
 # spaces
 catch_df_long_ak$LongNamePlot <- gsub(" - ", "\n", catch_df_long_ak$LongName)
@@ -611,7 +611,7 @@ global_yield_ms <- catch_df_long_ak %>%
   facet_grid(Climate~`F on\narrowtooth`)
 global_yield_ms
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms_AK.png"), global_yield_ms, width = 6.1, height = 5)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/global_yield_ms_AK.png"), global_yield_ms, width = 6, height = 5)
 
 # test <- catch_df_long %>% filter(run == "base")
 # test %>% group_by(mult) %>% summarize(mt = sum(mt))
@@ -797,13 +797,13 @@ ms_vs_ss_walters$LongName <- factor(ms_vs_ss_walters$LongName, levels = levs)
 # for paper
 ms_vs_ss_walters <- ms_vs_ss_walters %>%
   mutate(Fishing = ifelse(run == "atf", 
-                          "Market constraints on arrowtooth fishing",
+                          "Arrowtooth underexploitation",
                           "MFMSY varies for all focal groups"))
 
 # 
 ms_vs_ss_walters$Fishing <- factor(ms_vs_ss_walters$Fishing,
                                    levels = c("MFMSY varies for all focal groups",
-                                              "Market constraints on arrowtooth fishing"))
+                                              "Arrowtooth underexploitation"))
 
 # plot
 walters_plot <- ms_vs_ss_walters %>%
@@ -958,14 +958,14 @@ below_target <- ms_yield_long %>%
 # for paper
 below_target <- below_target %>%
   mutate(`F on\narrowtooth` = ifelse(run %in% c("atf","atf_climate"), 
-                                     "Market constraints on arrowtooth fishing",
+                                     "Arrowtooth underexploitation",
                                      "MFMSY varies for all focal groups"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 below_target$`F on\narrowtooth` <- factor(below_target$`F on\narrowtooth`, 
                                           levels = c("MFMSY varies for all focal groups",
-                                                     "Market constraints on arrowtooth fishing"))
+                                                     "Arrowtooth underexploitation"))
 
 p_below_target <- below_target %>%
   ggplot(aes(x = mult, y = n_below_target))+
@@ -977,7 +977,7 @@ p_below_target <- below_target %>%
   facet_grid(Climate~`F on\narrowtooth`)
 p_below_target
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/below_target.png"), p_below_target, width = 6, height = 4)
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/below_target.png"), p_below_target, width = 6, height = 4)
 
 # Diagnostics: top predators and forage fish ------------------------------
 
@@ -1069,14 +1069,14 @@ ms_other_df <- ms_other_df %>%
 # for paper
 ms_other_df <- ms_other_df %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"),
-                          "Market constraints\non arrowtooth fishing",
+                          "Arrowtooth\nunderexploitation",
                           "MFMSY varies for\nall focal groups"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 ms_other_df$Fishing <- factor(ms_other_df$Fishing,
                               levels = c("MFMSY varies for\nall focal groups",
-                                         "Market constraints\non arrowtooth fishing"))
+                                         "Arrowtooth\nunderexploitation"))
 
 # handle dash
 ms_other_df$LongName <- gsub(" - "," ",ms_other_df$LongName)
@@ -1168,7 +1168,7 @@ t3_names <- grps %>%
   mutate(Code = factor(Code, levels = t3_fg)) %>%
   arrange(Code) %>%
   pull(Name) #%>%
-  #sort()
+#sort()
 
 extract_naa <- function(ncfile){
   
@@ -1257,14 +1257,14 @@ naa$LongNamePlot <- gsub(" ", "\n", naa$LongName)
 
 naa <- naa %>%
   mutate(Fishing = ifelse(run %in% c("atf","atf_climate"), 
-                          "Market constraints\non arrowtooth fishing",
+                          "Arrowtooth\nunderexploitation",
                           "MFMSY varies for\nall focal groups"),
          Climate = ifelse(run %in% c("climate","atf_climate"), "ssp585 (2075-2085)", "Historical (1999)"))
 
 # reorder ATF F
 naa$Fishing <- factor(naa$Fishing, 
                       levels = c("MFMSY varies for\nall focal groups",
-                                 "Market constraints\non arrowtooth fishing"))
+                                 "Arrowtooth\nunderexploitation"))
 
 
 # add column for age as factor
@@ -1298,8 +1298,8 @@ naa_plot2 <- naa %>%
 naa_plot2
 
 # make a figure
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_1.png'), naa_plot1, width = 7, height = 7)
-ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_2.png'), naa_plot2, width = 7, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_1.png'), naa_plot1, width = 7, height = 7)
+# ggsave(paste0('NOAA_Azure/results/figures/oy_paper/naa',t,'_2.png'), naa_plot2, width = 7, height = 7)
 
 # key groups
 # naa_plot_ms <- naa %>%
@@ -1460,90 +1460,178 @@ waa_plot2
 # Also to produce a diet plot of sorts for arrowtooth for the supplement
 # This needs the dietcheck.txt output, which we do not have from all runs
 # if anything let this serve as future reminder that we should always produce that for a trophic model...
-this_run_no <- 39
 
-diet <- read.table(paste0("NOAA_Azure/results/diets/output_", this_run_no, "DietCheck.txt"), sep = " ", header = T)
+# plot them all together (highest F) to show changes
+# Base model at BG fishing: using 3 for now but change: change to 1556 performed on e2
+# base: 13
+# atf: 26 (using 25 for now, rerun 26 to get dietcheck)
+# climate: 39
+# atf_climate: 52 (using 51 for now, rerun 52 to get dietcheck)
 
-diet_long_stage <- diet %>%
-   mutate(Time = Time / 365) %>%
-   filter(Time > 75 & Time <=80) %>% # <= (ceiling(max(Time))-5)) %>% # focus on last 5 years of the run
-   left_join(mat, by = c('Predator' = 'Code')) %>%
-   rowwise() %>%
-   mutate(Stage = ifelse(is.na(age_class_mat), 'Adult', ifelse(Cohort < age_class_mat, 'Juvenile', 'Adult'))) %>%
-   ungroup() %>%
-   group_by(Predator, Stage) %>%
-   summarise(across(KWT:DR, mean)) %>%
-   ungroup() %>%
-   pivot_longer(-c(Predator, Stage), names_to = 'Prey', values_to = 'Prop') %>%
-   left_join((grps %>% select(Code, Name, LongName)), by = c('Predator'='Code')) %>%
-   rename(Predator_Name = Name, Predator_LongName = LongName) %>%
-   select(-Predator) %>%
-   left_join((grps %>% select(Code, Name, LongName)), by = c('Prey'='Code')) %>%
-   rename(Prey_Name = Name, Prey_LongName = LongName) %>%
-   select(Prop, Predator_Name, Predator_LongName, Stage, Prey_Name, Prey_LongName)%>%
-   filter(Prop > 0.005)
-
-# reorder stages
-diet_long_stage$Stage <- factor(diet_long_stage$Stage, levels = c("Juvenile","Adult"))
-
-diet_long_cohort <- diet %>%
-  mutate(Time = Time / 365) %>%
-  filter(Time > 75 & Time <=80) %>% # <= (ceiling(max(Time))-5)) %>% # focus on last 5 years of the run
-  group_by(Predator, Cohort) %>%
-  summarise(across(KWT:DR, mean)) %>%
-  ungroup() %>%
-  pivot_longer(-c(Predator, Cohort), names_to = 'Prey', values_to = 'Prop') %>%
-  left_join((grps %>% select(Code, Name, LongName)), by = c('Predator'='Code')) %>%
-  rename(Predator_Name = Name, Predator_LongName = LongName) %>%
-  select(-Predator) %>%
-  left_join((grps %>% select(Code, Name, LongName)), by = c('Prey'='Code')) %>%
-  rename(Prey_Name = Name, Prey_LongName = LongName) %>%
-  select(Prop, Predator_Name, Predator_LongName, Cohort, Prey_Name, Prey_LongName)%>%
-  filter(Prop > 0.005)
-
-# here's a list of the predators of interest for which we want plots
-pred_codes <- grps %>% filter(Code %in% c("ATF", top_preds)) %>% pull(Name)
-
-# loop over them and print out barchart plots for the diets
 library(RColorBrewer)
-age_type <- "C"
-for(i in 1:length(pred_codes)){
-  
-  this_fg <- pred_codes[i]
-  
-  if(age_type == "C"){
-    diet_data <- diet_long_cohort
-  } else {
-    diet_data <- diet_long_stage
-  }
+diet_runs <- data.frame("idx" = c(3,13,25,39,51),
+                        "run" = c("Base model,\ncalibration fishing",
+                                  "MFMSY varies for\nall focal groups,\nhistorical climate",
+                                  "Arrowtooth\nunderexploitation,\nhistorical climate",
+                                  "MFMSY varies for\nall focal groups,\nssp585",
+                                  "Arrowtooth\nunderexploitation,\nssp585"))
+diet_long_cohort <- list()
 
-  this_diet <- diet_data %>% 
-    filter(Predator_Name == this_fg) %>%
-    drop_na() 
+for(r in 1:nrow(diet_runs)){
   
-  colourCount <- length(unique(this_diet$Prey_Name)) 
-  getPalette <- colorRampPalette(brewer.pal(12, "Paired"))
+  this_run_no <- diet_runs[r,1]
+  this_run_lab <- diet_runs[r,2]
   
-  if(age_type == "C") {
-    p <- this_diet %>%
-      ggplot(aes(x = Cohort+1, y = Prop * 100, fill = Prey_LongName))+
-      geom_bar(stat = 'identity', position = 'stack')+
-      scale_x_continuous(breaks = 1:10)
-  } else {
-    p  <- this_diet %>%
-      ggplot(aes(x = Stage, y = Prop * 100, fill = Prey_LongName), stat = 'identity', position = 'stack')+
-      geom_bar(stat = 'identity', position = 'stack')
-  }
-
-    p <- p+
-    scale_fill_manual(values = getPalette(colourCount))+
-    theme_bw()+
-    labs(x = '', y = "Diet preference (%)",
-         fill = "Prey")
+  diet <- read.table(paste0("NOAA_Azure/results/diets/output_", this_run_no, "DietCheck.txt"), sep = " ", header = T)
   
-  ggsave(paste0("NOAA_Azure/results/figures/oy_paper/diet_plots/", this_run_no, "/", this_fg, "_", age_type, ".png"), p, width = 6, height = 4.5)
+  # diet_long_stage <- diet %>%
+  #   mutate(Time = Time / 365) %>%
+  #   filter(Time > 75 & Time <=80) %>% # <= (ceiling(max(Time))-5)) %>% # focus on last 5 years of the run
+  #   left_join(mat, by = c('Predator' = 'Code')) %>%
+  #   rowwise() %>%
+  #   mutate(Stage = ifelse(is.na(age_class_mat), 'Adult', ifelse(Cohort < age_class_mat, 'Juvenile', 'Adult'))) %>%
+  #   ungroup() %>%
+  #   group_by(Predator, Stage) %>%
+  #   summarise(across(KWT:DR, mean)) %>%
+  #   ungroup() %>%
+  #   pivot_longer(-c(Predator, Stage), names_to = 'Prey', values_to = 'Prop') %>%
+  #   left_join((grps %>% select(Code, Name, LongName)), by = c('Predator'='Code')) %>%
+  #   rename(Predator_Name = Name, Predator_LongName = LongName) %>%
+  #   select(-Predator) %>%
+  #   left_join((grps %>% select(Code, Name, LongName)), by = c('Prey'='Code')) %>%
+  #   rename(Prey_Name = Name, Prey_LongName = LongName) %>%
+  #   select(Prop, Predator_Name, Predator_LongName, Stage, Prey_Name, Prey_LongName)%>%
+  #   filter(Prop > 0.005)
+  # 
+  # # reorder stages
+  # diet_long_stage$Stage <- factor(diet_long_stage$Stage, levels = c("Juvenile","Adult"))
+  
+  diet_long_cohort[[r]] <- diet %>%
+    mutate(Time = Time / 365) %>%
+    filter(Time > 75 & Time <=80) %>% # <= (ceiling(max(Time))-5)) %>% # focus on last 5 years of the run
+    group_by(Predator, Cohort) %>%
+    summarise(across(KWT:DR, mean)) %>%
+    ungroup() %>%
+    pivot_longer(-c(Predator, Cohort), names_to = 'Prey', values_to = 'Prop') %>%
+    left_join((grps %>% select(Code, Name, LongName)), by = c('Predator'='Code')) %>%
+    rename(Predator_Name = Name, Predator_LongName = LongName) %>%
+    select(-Predator) %>%
+    left_join((grps %>% select(Code, Name, LongName)), by = c('Prey'='Code')) %>%
+    rename(Prey_Name = Name, Prey_LongName = LongName) %>%
+    select(Prop, Predator_Name, Predator_LongName, Cohort, Prey_Name, Prey_LongName)%>%
+    filter(Prop > 0.005) %>%
+    mutate(idx = this_run_no, run = this_run_lab)
+  
+  # here's a list of the predators of interest for which we want plots
+  
+  # loop over them and print out barchart plots for the diets
+  
+  #age_type <- "C"
+  # for(i in 1:length(pred_codes)){
+  #   
+  #   this_fg <- pred_codes[i]
+  #   
+  #   if(age_type == "C"){
+  #     diet_data <- diet_long_cohort
+  #   } else {
+  #     diet_data <- diet_long_stage
+  #   }
+  #   
+  #   this_diet <- diet_data %>% 
+  #     filter(Predator_Name == this_fg) %>%
+  #     drop_na() 
+  #   
+  #   colourCount <- length(unique(this_diet$Prey_Name)) 
+  #   getPalette <- colorRampPalette(brewer.pal(12, "Paired"))
+  #   
+  #   if(age_type == "C") {
+  #     p <- this_diet %>%
+  #       ggplot(aes(x = Cohort+1, y = Prop * 100, fill = Prey_LongName))+
+  #       geom_bar(stat = 'identity', position = 'stack')+
+  #       scale_x_continuous(breaks = 1:10)
+  #   } else {
+  #     p  <- this_diet %>%
+  #       ggplot(aes(x = Stage, y = Prop * 100, fill = Prey_LongName), stat = 'identity', position = 'stack')+
+  #       geom_bar(stat = 'identity', position = 'stack')
+  #   }
+  #   
+  #   p <- p+
+  #     scale_fill_manual(values = getPalette(colourCount))+
+  #     theme_bw()+
+  #     labs(x = '', y = "Diet preference (%)",
+  #          fill = "Prey")
+  #   
+  # }
+  
 }
 
+diet_long_cohort <- bind_rows(diet_long_cohort)
+
+pred_names <- grps %>% filter(Code %in% c("ATF", top_preds)) %>% pull(Name)
+
+diet_long_preds <- diet_long_cohort %>% filter(Predator_Name %in% pred_names)
+
+# reorder factors for plotting
+diet_long_preds$run <- factor(diet_long_preds$run, levels = c("Base model,\ncalibration fishing",
+                                                              "MFMSY varies for\nall focal groups,\nhistorical climate",
+                                                              "Arrowtooth\nunderexploitation,\nhistorical climate",
+                                                              "MFMSY varies for\nall focal groups,\nssp585",
+                                                              "Arrowtooth\nunderexploitation,\nssp585"))
+
+# plot
+for(i in 1:length(pred_codes)){
+
+  this_fg <- pred_codes[i]
+
+  this_diet <- diet_long_preds %>%
+    filter(Predator_Name == this_fg) %>%
+    drop_na()
+
+  colourCount <- length(unique(this_diet$Prey_Name))
+  getPalette <- colorRampPalette(brewer.pal(12, "Paired"))
+
+
+  p <- this_diet %>%
+    ggplot(aes(x = Cohort+1, y = Prop * 100, fill = Prey_LongName))+
+    geom_bar(stat = 'identity', position = 'stack')+
+    scale_x_continuous(breaks = 1:10)+
+    scale_fill_manual(values = getPalette(colourCount))+
+    theme_bw()+
+    labs(x = '', y = "Diet preference (%)", fill = "Prey")+
+    theme(legend.position="bottom",
+          legend.spacing.x = unit(0.1, 'cm'))+
+    guides(fill = guide_legend(nrow = 4))+
+    facet_wrap(~run, nrow = 1)
+
+  ggsave(paste0("NOAA_Azure/results/figures/oy_paper/diet_plots/faceted/", this_fg, ".png"), p, width = 8, height = 5)
+
+}
+
+# plot all together
+# drop ATF here
+diet_long_preds <- diet_long_preds %>%
+  filter(Predator_Name != "Arrowtooth_flounder")
+
+# pred longname for facets
+diet_long_preds$Predator_LongNamePlot <- gsub(" ", "\n", diet_long_preds$Predator_LongName)
+
+colourCount <- length(unique(diet_long_preds$Prey_Name))
+getPalette <- colorRampPalette(brewer.pal(12, "Paired"))
+
+p_all <- diet_long_preds %>%
+  ggplot(aes(x = Cohort+1, y = Prop * 100, fill = Prey_LongName))+
+  geom_bar(stat = 'identity', position = 'stack')+
+  scale_x_continuous(breaks = 1:10)+
+  scale_fill_manual(values = getPalette(colourCount))+
+  theme_bw()+
+  labs(x = 'Age class', y = "Diet composition (%)", fill = "Prey")+
+  theme(legend.position="bottom",
+        legend.spacing.x = unit(0.1, 'cm'))+
+  guides(fill = guide_legend(nrow = 4))+
+  facet_grid2(Predator_LongNamePlot~run)+
+  theme(strip.text.y = element_text(angle=0))
+
+# ggsave(paste0("NOAA_Azure/results/figures/oy_paper/diet_plots/faceted/all.png"), p_all, width = 8.5, height = 6)
 
 # Diagnostics: between-run prey biomass -----------------------------------
 # The response of some predators, such as steller sea lions, is confusing in our scenarios
@@ -1612,7 +1700,7 @@ other_plot_forage_abs <- ms_other_df %>%
 
 # ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top_biomass.png"), other_plot_top_abs, width = 7, height = 4)
 # ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage_biomass.png"), other_plot_forage_abs, width = 7, height = 4)
-  
+
 # what if we tied this to the diets?
 # one (bespoke) way of doing it may be:
 # for each predator, identify the main prey species from dietcheck (in baseline)
@@ -1622,10 +1710,10 @@ other_plot_forage_abs <- ms_other_df %>%
 # This is qualitative, but it demonstrate a likely trophic link and its effects
 
 # for now, "baseline" is run 3, but replace with real base run when it's done (close enough)
-base_diet <- read.table(paste0("NOAA_Azure/results/diets/output_3DietCheck.txt"), sep = " ", header = T)
+base_diet <- read.table(paste0("NOAA_Azure/results/diets/output_1556DietCheck.txt"), sep = " ", header = T)
 
 # put in long format
-diet_long_other <- diet %>%
+diet_long_other <- base_diet %>%
   mutate(Time = Time / 365) %>%
   filter(Time > 75 & Time <=80) %>% # 
   group_by(Predator) %>%
@@ -1638,7 +1726,7 @@ diet_long_other <- diet %>%
   left_join((grps %>% select(Code, Name, LongName)), by = c('Prey'='Code')) %>%
   rename(Prey_Name = Name, Prey_LongName = LongName) %>%
   select(Prop, Predator_Name, Predator_LongName, Prey_Name, Prey_LongName)%>%
-  filter(Prop > 0.01)
+  filter(Prop > 0) # only keep actual non-zero interaction
 
 # for each top predator, which are the prey species?
 top_pred_names <- grps %>% filter(Code %in% top_preds) %>% pull(Name)
@@ -1742,9 +1830,9 @@ for(i in 1:length(preds_and_prey)){
 
 diet_biomass <- bind_rows(diet_biomass)
 
-# now need to rescale to b0, where b0 is for Base conditions under no fishing (good luck explaining all this in words)
+# now need to rescale to b0, where b0 is for each scenario
 b0_for_diets <- diet_biomass %>% filter(mult == 0) %>% dplyr::select(Name, run, biomass_of_prey_or_pred) %>% rename(b0 = biomass_of_prey_or_pred)
-  
+
 diet_biomass_scalars <- diet_biomass %>%
   left_join(b0_for_diets, by = c("Name", "run")) %>%
   mutate(scalar = (biomass_of_prey_or_pred - b0)/b0*100) %>%
@@ -1755,7 +1843,7 @@ diet_biomass_scalars <- diet_biomass %>%
 diet_biomass_scalars$LongName <- gsub(" - ", " ", diet_biomass_scalars$LongName)
 
 # now join this to the ms_other_df frame
-  
+
 ms_other_df_diet <- ms_other_df %>%
   left_join(diet_biomass_scalars, by = c("LongName","run","mult"))
 
@@ -1766,10 +1854,10 @@ other_plot_top_diets <- ms_other_df_diet %>%
   geom_point(color = "black", size = 3)+
   scale_shape_manual(values = c(21,24))+
   colorspace::scale_fill_continuous_divergingx(palette = 'PRGn', mid = 0) + 
-  geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
+  geom_vline(xintercept = 1, color = 'black', linetype = "dashed", linewidth = 0.35)+
   theme_bw()+
   labs(x = expression(MF[MSY] ~ "multiplier"), y = "Biomass (1000 mt)", fill = "Change in total prey\nbiomass from unfished (%)")+
-  #guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
+  #guides(fill=guide_legend(order=1), shape=guide_legend(order=2))+
   facet_grid2(LongNamePlot~Climate, scales = 'free')+
   theme(strip.text.y = element_text(angle=0))
 
@@ -1779,16 +1867,15 @@ other_plot_forage_diets <- ms_other_df_diet %>%
   geom_point(color = "black", size = 3)+
   scale_shape_manual(values = c(21,24))+
   colorspace::scale_fill_continuous_divergingx(palette = 'PRGn', mid = 0) + 
-  geom_vline(xintercept = 1, color = 'black', linetype = "dotted", linewidth = 1)+
+  geom_vline(xintercept = 1, color = 'black', linetype = "dashed", linewidth = 0.35)+
   theme_bw()+
   labs(x = expression(MF[MSY] ~ "multiplier"), y = "Biomass (1000 mt)", fill = "Change in total predator\nbiomass from unfished (%)")+
-  #guides(color=guide_legend(order=1), linetype=guide_legend(order=2))+
+  #guides(fill=guide_legend(order=1), shape=guide_legend(order=2))+
   facet_grid2(LongNamePlot~Climate, scales = 'free')+
   theme(strip.text.y = element_text(angle=0))
 
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top_diets.png"), other_plot_top_diets, width = 7, height = 4)
-ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage_diets.png"), other_plot_forage_diets, width = 7, height = 4)
-
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_top_diets_v3.png"), other_plot_top_diets, width = 7, height = 4)
+ggsave(paste0("NOAA_Azure/results/figures/oy_paper/other_forage_diets_v3.png"), other_plot_forage_diets, width = 7, height = 4)
 
 # # Diagnostics: M -----------------------------------------------------------------------
 # 
